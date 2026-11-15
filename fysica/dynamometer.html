@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bepalen van de zwaartekracht</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: een statief met dynamometer dat je naar elk hemellichaam meeneemt
+PICTURE: dynamometer met N-schaal, massa's aan de haak, lucht en bodem van het gekozen hemellichaam
+COLOUR and TYPE: wit bedieningspaneel, scène in de kleuren van het hemellichaam, signaalrood voor de wijzer; Atkinson Hyperlegible
+LAYOUT: scène links, bediening rechts; onder 760px gestapeld
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b;--sky1:#9fd3ff;--sky2:#e6f4ff;--gnd:#6aa84f}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh}
+.scene{position:relative;background:linear-gradient(var(--sky1),var(--sky2));transition:background .6s;min-height:520px;overflow:hidden}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.place{position:absolute;left:20px;top:16px;z-index:2;color:var(--sceneInk,#10202e);text-shadow:0 1px 0 rgba(255,255,255,.25)}
+.place h1{margin:0;font-size:clamp(28px,4vw,44px);line-height:1.05}
+.place p{margin:2px 0 0;font-size:19px;font-weight:700}
+.read{position:absolute;right:16px;top:16px;z-index:2;background:rgba(255,255,255,.92);color:#15171a;border-radius:12px;padding:8px 14px;font-size:clamp(24px,3.4vw,38px);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.read small{display:block;font-size:13px;font-weight:400;color:#5d636b}
+.read.over{background:var(--red);color:#fff}.read.over small{color:#fff}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.bodies{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tray{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.mass{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 8px;min-width:66px}
+.mass i{display:block;background:linear-gradient(90deg,#7c858f,#d9dee3 45%,#8e979f);border-radius:4px;margin-bottom:4px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:14px;color:var(--mut);font-weight:700}
+.empty td{text-align:left;color:var(--mut);white-space:normal}
+.hidecol .c3{display:none}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.formula{font-size:20px;font-weight:700;background:var(--card);border-radius:10px;padding:10px 14px}
+@media(max-width:760px){.app{grid-template-columns:1fr}.scene{min-height:560px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" id="scene" aria-label="Dynamometer aan een statief">
+    <div class="place"><h1 id="pname">Aarde</h1><p id="pg">g = 9,81 N/kg</p></div>
+    <div class="read" id="read" aria-live="polite"><small>Aflezing</small><span id="rv">0,00 N</span></div>
+    <svg id="svg" viewBox="0 0 300 760" preserveAspectRatio="xMidYMax meet" aria-hidden="true"></svg>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Waar staan we?</h2>
+      <div class="bodies" id="bodies"></div>
+    </div>
+    <div>
+      <h2>Massa's — klik om op te hangen</h2>
+      <div class="tray" id="tray"></div>
+      <p class="hint">Klik op een massa aan de dynamometer om ze weer af te nemen. Er passen maximaal 5 massa's aan de haak.</p>
+    </div>
+    <div>
+      <h2>Meetbereik van de dynamometer</h2>
+      <div class="row" id="ranges"></div>
+    </div>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tDig" checked> Digitale aflezing tonen</label>
+      <label class="tg"><input type="checkbox" id="tG" checked> Waarde van g tonen</label>
+      <label class="tg"><input type="checkbox" id="tF"> Formule tonen</label>
+    </div>
+    <div class="formula" id="formula" hidden>F<sub>z</sub> = m · g</div>
+    <div>
+      <h2>Meettabel</h2>
+      <div class="row" style="margin-bottom:8px">
+        <button id="note">Meting noteren</button>
+        <button id="clear">Tabel wissen</button>
+        <label class="tg"><input type="checkbox" id="tC" checked> Kolom F<sub>z</sub>/m tonen</label>
+      </div>
+      <table id="tbl"><thead><tr><th>Hemellichaam</th><th>m (kg)</th><th>F<sub>z</sub> (N)</th><th class="c3">F<sub>z</sub>/m (N/kg)</th></tr></thead><tbody id="tb"></tbody></table>
+    </div>
+  </section>
+</div>
+<script>
+{
+const BODIES=[
+ {n:"Aarde",g:9.81,s:["#8ccdff","#e3f3ff"],gr:"#5f9b45",ink:"#10202e"},
+ {n:"Maan",g:1.62,s:["#05060c","#1c2030"],gr:"#a7a7a7",ink:"#f1f1f1"},
+ {n:"Mercurius",g:3.7,s:["#07080d","#2a2620"],gr:"#8d8378",ink:"#f1f1f1"},
+ {n:"Venus",g:8.87,s:["#e8c46a","#f6e2a8"],gr:"#b9893c",ink:"#2a1d05"},
+ {n:"Mars",g:3.71,s:["#d99a6c","#f1cfb0"],gr:"#b3542e",ink:"#2b1206"},
+ {n:"Jupiter",g:24.79,s:["#c98c55","#ead2b0"],gr:"#a8693c",ink:"#2b1606"},
+ {n:"Saturnus",g:10.44,s:["#d8bf84","#f1e6c6"],gr:"#b39a5c",ink:"#2b2006"},
+ {n:"Uranus",g:8.69,s:["#7fd3d8","#d5f3f3"],gr:"#4fa7ae",ink:"#06282b"},
+ {n:"Neptunus",g:11.15,s:["#3b63c9","#8fb0f0"],gr:"#2b479a",ink:"#ffffff"},
+ {n:"Zon",g:274,s:["#ff8a00","#ffd34d"],gr:"#e04a00",ink:"#2b0a00"},
+ {n:"Planeet X",g:null,s:["#3b2b5c","#7a62a8"],gr:"#4c3a73",ink:"#ffffff"}
+];
+const MASSES=[{m:.05,l:"50 g",h:16,w:30},{m:.1,l:"100 g",h:20,w:36},{m:.2,l:"200 g",h:26,w:44},{m:.5,l:"500 g",h:34,w:56},{m:1,l:"1 kg",h:44,w:70}];
+const RANGES=[1,5,10,50,500];
+const SC0=62,SCL=220; // scale start y and length in svg units
+let body=BODIES[0],gX=+(2+Math.random()*28).toFixed(1),hung=[],range=10,d=0,v=0,rows=[];
+const $=id=>document.getElementById(id);
+const fmt=(x,n=2)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n});
+const g=()=>body.g??gX;
+const mass=()=>hung.reduce((a,i)=>a+MASSES[i].m,0);
+const force=()=>mass()*g();
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+$("bodies").innerHTML=BODIES.map((b,i)=>`<button data-b="${i}" aria-pressed="${i==0}">${b.n}</button>`).join("");
+$("tray").innerHTML=MASSES.map((m,i)=>`<button class="mass" data-m="${i}" aria-label="Hang ${m.l} op"><i style="width:${m.w*.6}px;height:${m.h*.6}px"></i>${m.l}</button>`).join("");
+$("ranges").innerHTML=RANGES.map(r=>`<button data-r="${r}" aria-pressed="${r==range}">${r} N</button>`).join("");
+
+const svg=$("svg");
+function staticParts(){
+  const ticks=[],labels=[],steps=50;
+  for(let k=0;k<=steps;k++){
+    const y=SC0+k*SCL/steps,maj=k%5==0;
+    ticks.push(`<line x1="${maj?162:170}" x2="182" y1="${y}" y2="${y}" stroke="#1a1d21" stroke-width="${maj?1.6:.8}"/>`);
+    if(maj){const val=range*k/steps;labels.push(`<text x="136" y="${y+4}" text-anchor="end" font-size="12" font-weight="700" fill="#1a1d21">${fmt(val,range<5?1:0)}</text>`)}
+  }
+  return `
+  <defs>
+   <linearGradient id="metal" x1="0" x2="1"><stop offset="0" stop-color="#6f7882"/><stop offset=".45" stop-color="#e3e7eb"/><stop offset="1" stop-color="#7f8891"/></linearGradient>
+   <linearGradient id="tube" x1="0" x2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset=".3" stop-color="#ffffff" stop-opacity=".92"/><stop offset="1" stop-color="#e9eef3" stop-opacity=".7"/></linearGradient>
+  </defs>
+  <rect id="ground" x="-400" y="730" width="1100" height="60"/>
+  <rect x="10" y="712" width="90" height="20" rx="4" fill="#2c3036"/>
+  <rect x="34" y="16" width="12" height="700" rx="3" fill="url(#metal)"/>
+  <rect x="34" y="20" width="132" height="10" rx="3" fill="url(#metal)"/>
+  <circle cx="150" cy="36" r="7" fill="none" stroke="#3a3f45" stroke-width="3"/>
+  <rect id="rod" x="142" y="48" width="16" height="10" rx="3" fill="url(#metal)"/>
+  <rect x="112" y="42" width="76" height="${SCL+40}" rx="10" fill="url(#tube)" stroke="#7c858f" stroke-width="2"/>
+  <rect x="108" y="40" width="84" height="12" rx="5" fill="#2c3036"/>
+  <rect x="108" y="${SCL+76}" width="84" height="10" rx="4" fill="#2c3036"/>
+  ${ticks.join("")}${labels.join("")}
+  <text x="150" y="${SCL+70}" text-anchor="middle" font-size="12" fill="#5d636b">N</text>
+  <g id="ind"><rect x="113" y="-2.5" width="74" height="5" fill="#e4002b"/></g>
+  <g id="hook"></g>`;
+}
+function draw(){svg.innerHTML=staticParts();drawMasses();frame()}
+function drawMasses(){
+  let y=10,parts=[];
+  hung.forEach((i,k)=>{const M=MASSES[i];
+    parts.push(`<g data-k="${k}" style="cursor:pointer">
+     <path d="M150 ${y-10} v4" stroke="#3a3f45" stroke-width="2.5"/>
+     <circle cx="150" cy="${y-3}" r="4" fill="none" stroke="#3a3f45" stroke-width="2.5"/>
+     <rect x="${150-M.w/2}" y="${y+1}" width="${M.w}" height="${M.h}" rx="4" fill="url(#metal)" stroke="#4b525a"/>
+     <text x="150" y="${y+1+M.h/2+5}" text-anchor="middle" font-size="${M.h<20?10:13}" font-weight="700" fill="#15171a">${M.l}</text></g>`);
+    y+=M.h+12});
+  svg.querySelector("#hook").innerHTML=`<path d="M150 0 v8 a7 7 0 1 1 -7 7" fill="none" stroke="#3a3f45" stroke-width="3" stroke-linecap="round"/><g transform="translate(0,14)">${parts.join("")}</g>`;
+}
+function target(){const F=force();return Math.min(F/range,1.06)*SCL}
+function frame(){
+  const ind=svg.querySelector("#ind"),hook=svg.querySelector("#hook"),rod=svg.querySelector("#rod");
+  if(!ind)return;
+  ind.setAttribute("transform",`translate(0,${SC0+d})`);
+  rod.setAttribute("height",SCL+48+d);
+  hook.setAttribute("transform",`translate(0,${SCL+92+d})`);
+}
+function tick(){
+  const t=target();
+  if(reduce){d=t;v=0}else{v+=(t-d)*.12;v*=.82;d+=v;if(Math.abs(t-d)<.05&&Math.abs(v)<.05){d=t;v=0}}
+  frame();requestAnimationFrame(tick);
+}
+function update(){
+  const F=force(),over=F>range;
+  $("rv").textContent=over?"Overbelast!":fmt(F)+" N";
+  $("read").classList.toggle("over",over);
+  $("read").querySelector("small").textContent=over?"Kies een groter meetbereik":"Aflezing";
+  $("read").style.visibility=($("tDig").checked||over)?"visible":"hidden";
+  $("pname").textContent=body.n;
+  $("pg").textContent="g = "+(body.g==null||!$("tG").checked?"? ":fmt(g(),2).replace(/,?0+$/,"")+" ")+"N/kg";
+  const sc=$("scene");sc.style.setProperty("--sky1",body.s[0]);sc.style.setProperty("--sky2",body.s[1]);sc.style.setProperty("--sceneInk",body.ink);
+  const gr=svg.querySelector("#ground");if(gr)gr.setAttribute("fill",body.gr);
+  document.querySelectorAll("[data-b]").forEach(b=>b.setAttribute("aria-pressed",BODIES[b.dataset.b]==body));
+  document.querySelectorAll("[data-r]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.r==range));
+}
+function renderTable(){
+  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${fmt(r.m,2)}</td><td>${fmt(r.F,2)}</td><td class="c3">${r.m?fmt(r.F/r.m,2):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="4">Nog geen metingen. Hang massa's op en klik op ‘Meting noteren’.</td></tr>`;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-b]"),m=e.target.closest("[data-m]"),r=e.target.closest("[data-r]"),k=e.target.closest("[data-k]");
+  if(b){const nb=BODIES[b.dataset.b];if(nb.g==null)gX=+(2+Math.random()*28).toFixed(1);body=nb;update()}
+  if(m&&hung.length<5){hung.push(+m.dataset.m);drawMasses();update()}
+  if(k){hung.splice(+k.dataset.k,1);drawMasses();update()}
+  if(r){range=+r.dataset.r;draw();update()}
+});
+$("note").onclick=()=>{rows.push({b:body.n,m:mass(),F:force()});renderTable()};
+$("clear").onclick=()=>{rows=[];renderTable()};
+["tDig","tG"].forEach(id=>$(id).onchange=update);
+$("tF").onchange=()=>{$("formula").hidden=!$("tF").checked};
+$("tC").onchange=()=>$("tbl").classList.toggle("hidecol",!$("tC").checked);
+draw();update();renderTable();requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
