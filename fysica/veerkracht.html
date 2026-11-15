@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Veerkracht en veerconstante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: een statief met een schroefveer en een meetlat in cm; massa's uitrekken de veer
+LAYOUT: scène links, bediening rechts; onder 760px gestapeld (zelfde opbouw als de dynamometer-applet)
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh}
+.scene{position:relative;background:linear-gradient(#eef3f6,#dfe7ec);min-height:560px;overflow:hidden}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.place{position:absolute;left:16px;top:16px;z-index:2;color:#10202e;background:rgba(255,255,255,.94);border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.place h1{margin:0;font-size:clamp(28px,4vw,44px);line-height:1.05}
+.place p{margin:2px 0 0;font-size:19px;font-weight:700}
+.read{position:absolute;right:16px;top:16px;z-index:2;background:rgba(255,255,255,.94);color:#15171a;border-radius:12px;padding:8px 14px;font-size:clamp(22px,3vw,34px);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:2px}
+.read small{display:block;font-size:13px;font-weight:400;color:#5d636b}
+.read .line{display:block}
+.read.over{background:var(--red);color:#fff}.read.over small{color:#fff}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.springs{display:flex;flex-wrap:wrap;gap:6px}
+.springs button{display:flex;align-items:center;gap:8px}
+.springs svg{width:14px;height:30px;flex:none}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.tray{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.mass{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 8px;min-width:66px}
+.mass i{display:block;background:linear-gradient(90deg,#7c858f,#d9dee3 45%,#8e979f);border-radius:4px;margin-bottom:4px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:14px;color:var(--mut);font-weight:700}
+.empty td{text-align:left;color:var(--mut);white-space:normal}
+.hidecol .c4{display:none}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.formula{font-size:20px;font-weight:700;background:var(--card);border-radius:10px;padding:10px 14px}
+.chart{background:var(--card);border-radius:10px;padding:10px 12px;margin-top:10px}
+.chart svg{display:block;width:100%;height:auto}
+.chart .ax{stroke:var(--ink);stroke-width:1.4}.chart .gl{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--ink);font:13px "Atkinson Hyperlegible",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.chart .tt{font-weight:700;font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 0;padding:0;list-style:none;font-size:14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+@media(max-width:760px){.app{grid-template-columns:1fr}.scene{min-height:600px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" aria-label="Veer aan een statief met meetlat">
+    <div class="place"><h1 id="pname">Veer A</h1><p id="pk">k = 10 N/m</p></div>
+    <div class="read" id="read" aria-live="polite">
+      <span class="line"><small>Uitrekking</small><span id="rl">0,0 cm</span></span>
+      <span class="line" id="rfwrap"><small>Kracht op de veer</small><span id="rf">0,00 N</span></span>
+    </div>
+    <svg id="svg" viewBox="0 0 300 760" preserveAspectRatio="xMidYMax meet" aria-hidden="true"></svg>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Kies een veer</h2>
+      <div class="springs" id="springs"></div>
+      <p class="hint">Hoe dikker de draad, hoe stijver de veer. Bij Veer X is de veerconstante onbekend.</p>
+    </div>
+    <div>
+      <h2>Massa's — klik om op te hangen</h2>
+      <div class="tray" id="tray"></div>
+      <p class="hint">Klik op een massa aan de veer om ze weer af te nemen. Er passen maximaal 5 massa's aan de haak.</p>
+    </div>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tDig" checked> Uitrekking digitaal tonen</label>
+      <label class="tg"><input type="checkbox" id="tFv" checked> Kracht tonen</label>
+      <label class="tg"><input type="checkbox" id="tK" checked> Waarde van k tonen</label>
+      <label class="tg"><input type="checkbox" id="tF"> Formule tonen</label>
+    </div>
+    <div class="formula" id="formula" hidden>F<sub>v</sub> = k · Δl &nbsp;&nbsp; met &nbsp; F<sub>v</sub> = F<sub>z</sub> = m · g</div>
+    <div>
+      <h2>Meettabel</h2>
+      <div class="row" style="margin-bottom:8px">
+        <button id="note">Meting noteren</button>
+        <button id="clear">Tabel wissen</button>
+        <button id="graph" aria-pressed="false" aria-controls="chart">Toon grafiek</button>
+        <label class="tg"><input type="checkbox" id="tC" checked> Kolom F/Δl tonen</label>
+      </div>
+      <div class="tblwrap">
+        <table id="tbl"><thead><tr><th>Veer</th><th>m (kg)</th><th>F (N)</th><th>Δl (m)</th><th class="c4">F/Δl (N/m)</th></tr></thead><tbody id="tb"></tbody></table>
+      </div>
+      <div class="chart" id="chart" hidden>
+        <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de veerkracht in functie van de uitrekking"></svg>
+        <ul class="legend" id="legend"></ul>
+        <label class="tg"><input type="checkbox" id="tL" checked> Rechte door de oorsprong tonen</label>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+{
+const G=9.81, LIMIT=.45; // m: elasticiteitsgrens, daarboven overbelast
+const SPRINGS=[
+ {n:"Veer A",k:10,c:"#c0392b",w:1.6},
+ {n:"Veer B",k:25,c:"#1f6fd1",w:2.3},
+ {n:"Veer C",k:50,c:"#1a9a5b",w:3},
+ {n:"Veer D",k:100,c:"#7a4fb0",w:3.8},
+ {n:"Veer X",k:null,c:"#d17a00",w:2.6}
+];
+const MASSES=[{m:.05,l:"50 g",h:16,w:30},{m:.1,l:"100 g",h:20,w:36},{m:.2,l:"200 g",h:26,w:44},{m:.5,l:"500 g",h:34,w:56},{m:1,l:"1 kg",h:44,w:70}];
+const S=7, TOP=40, L0=110, Z=TOP+L0+8, RMAX=50; // svg-eenheden per cm, ophangpunt, rustlengte, nulpunt meetlat, lat tot 50 cm
+let spring=SPRINGS[0],kX=5*Math.round((15+Math.random()*70)/5),hung=[],d=0,v=0,rows=[];
+const $=id=>document.getElementById(id);
+const fmt=(x,n=2)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n});
+const k=()=>spring.k??kX;
+const mass=()=>hung.reduce((a,i)=>a+MASSES[i].m,0);
+const force=()=>mass()*G;
+const ext=()=>force()/k();           // in m
+const over=()=>ext()>LIMIT;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const icon=s=>`<svg viewBox="0 0 14 30" aria-hidden="true"><path d="M7 0v3${" l5 2.4 l-10 2.4".repeat(5)} l5 2.4v3" fill="none" stroke="${s.c}" stroke-width="${s.w*.8}" stroke-linejoin="round"/></svg>`;
+$("springs").innerHTML=SPRINGS.map((s,i)=>`<button data-s="${i}" aria-pressed="${i==0}">${icon(s)}${s.n}</button>`).join("");
+$("tray").innerHTML=MASSES.map((m,i)=>`<button class="mass" data-m="${i}" aria-label="Hang ${m.l} op"><i style="width:${m.w*.6}px;height:${m.h*.6}px"></i>${m.l}</button>`).join("");
+
+const svg=$("svg");
+function staticParts(){
+  let r="";
+  for(let c=0;c<=RMAX;c++){const y=Z+c*S,maj=c%5==0;
+    r+=`<line x1="${maj?72:80}" x2="92" y1="${y}" y2="${y}" stroke="#1a1d21" stroke-width="${maj?1.5:.7}"/>`;
+    if(maj&&c%10==0)r+=`<text x="68" y="${y+4}" text-anchor="end" font-size="12" font-weight="700" fill="#1a1d21">${c}</text>`;
+    else if(maj)r+=`<text x="68" y="${y+4}" text-anchor="end" font-size="10" fill="#1a1d21">${c}</text>`;}
+  return `
+  <defs><linearGradient id="metal" x1="0" x2="1"><stop offset="0" stop-color="#6f7882"/><stop offset=".45" stop-color="#e3e7eb"/><stop offset="1" stop-color="#7f8891"/></linearGradient></defs>
+  <rect x="-400" y="730" width="1100" height="60" fill="#b9a68a"/>
+  <rect x="10" y="712" width="90" height="20" rx="4" fill="#2c3036"/>
+  <rect x="24" y="16" width="12" height="700" rx="3" fill="url(#metal)"/>
+  <rect x="24" y="20" width="176" height="10" rx="3" fill="url(#metal)"/>
+  <rect x="44" y="${Z-14}" width="52" height="${RMAX*S+28}" rx="4" fill="#f7e9b8" stroke="#a88f45"/>
+  <rect x="36" y="${Z-20}" width="10" height="8" fill="#3a3f45"/>
+  ${r}
+  <text x="80" y="${Z-4}" font-size="10" font-weight="700" fill="#1a1d21">cm</text>
+  <circle cx="180" cy="${TOP-4}" r="5" fill="none" stroke="#3a3f45" stroke-width="3"/>
+  <path id="coil" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  <g id="hang"><line x1="98" x2="168" y1="0" y2="0" stroke="#e4002b" stroke-width="2.5"/><path d="M98 0 l8 -5 v10z" fill="#e4002b"/><g id="hook"></g></g>`;
+}
+function cleanCoil(len){ // zigzag rond x=180
+  const n=14,lead=8,body=len-2*lead,step=body/(2*n);let x=180,y=TOP+lead,p=`M180 ${TOP} V${y}`;
+  for(let i=0;i<2*n;i++){y+=step;x=i%2?167:193;if(i==2*n-1)x=180;p+=` L${x} ${y}`}
+  return p+` V${TOP+len}`;
+}
+function draw(){svg.innerHTML=staticParts();drawMasses();frame()}
+function drawMasses(){
+  let y=10,parts=[];
+  hung.forEach((i,k)=>{const M=MASSES[i];
+    parts.push(`<g data-k="${k}" style="cursor:pointer">
+     <path d="M180 ${y-10} v4" stroke="#3a3f45" stroke-width="2.5"/>
+     <circle cx="180" cy="${y-3}" r="4" fill="none" stroke="#3a3f45" stroke-width="2.5"/>
+     <rect x="${180-M.w/2}" y="${y+1}" width="${M.w}" height="${M.h}" rx="4" fill="url(#metal)" stroke="#4b525a"/>
+     <text x="180" y="${y+1+M.h/2+5}" text-anchor="middle" font-size="${M.h<20?10:13}" font-weight="700" fill="#15171a">${M.l}</text></g>`);
+    y+=M.h+12});
+  svg.querySelector("#hook").innerHTML=`<path d="M180 0 v8 a7 7 0 1 1 -7 7" fill="none" stroke="#3a3f45" stroke-width="3" stroke-linecap="round"/><g transform="translate(0,14)">${parts.join("")}</g>`;
+}
+function target(){return Math.min(ext(),LIMIT+.05)*100*S}
+function frame(){
+  const coil=svg.querySelector("#coil"),hang=svg.querySelector("#hang");if(!coil)return;
+  const len=L0+8+d;
+  coil.setAttribute("d",cleanCoil(len));coil.setAttribute("stroke",spring.c);coil.setAttribute("stroke-width",spring.w);
+  hang.setAttribute("transform",`translate(0,${TOP+len})`);
+}
+function tick(){
+  const t=target();
+  if(reduce){d=t;v=0}else{v+=(t-d)*.06;v*=.94;d+=v;if(Math.abs(t-d)<.05&&Math.abs(v)<.05){d=t;v=0}}
+  frame();requestAnimationFrame(tick);
+}
+function update(){
+  const o=over();
+  $("rl").textContent=o?"Overbelast!":fmt(ext()*100,1)+" cm";
+  $("rf").textContent=fmt(force())+" N";
+  $("read").classList.toggle("over",o);
+  $("read").querySelector("small").textContent=o?"Neem een stevigere veer":"Uitrekking";
+  $("read").style.visibility=($("tDig").checked||$("tFv").checked||o)?"visible":"hidden";
+  $("rl").parentElement.hidden=!($("tDig").checked||o);
+  $("rfwrap").hidden=!$("tFv").checked||o;
+  $("pname").textContent=spring.n;
+  $("pk").textContent="k = "+(spring.k==null||!$("tK").checked?"?":fmt(k(),0))+" N/m";
+  $("note").disabled=o;
+  document.querySelectorAll("[data-s]").forEach(b=>b.setAttribute("aria-pressed",SPRINGS[b.dataset.s]==spring));
+}
+const col=n=>SPRINGS.find(s=>s.n==n).c;
+function niceStep(max){const raw=max/5,p=10**Math.floor(Math.log10(raw)),f=raw/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+const decs=s=>Math.max(0,-Math.floor(Math.log10(s)+1e-9))+(String(s).includes("25")?1:0);
+function renderChart(){
+  const cs=$("csvg");if($("chart").hidden)return;
+  const L=62,R=500,T=16,B=270,W=R-L,H=B-T;
+  if(!rows.length){cs.innerHTML=`<text x="260" y="150" text-anchor="middle">Noteer eerst metingen om de grafiek te zien.</text>`;$("legend").innerHTML="";return}
+  const mx=Math.max(...rows.map(r=>r.x),.01),my=Math.max(...rows.map(r=>r.F),.1);
+  const xs=niceStep(mx),ys=niceStep(my),xm=Math.ceil(mx/xs-1e-9)*xs,ym=Math.ceil(my/ys-1e-9)*ys;
+  const X=x=>L+x/xm*W,Y=F=>B-F/ym*H;
+  let o="";
+  for(let i=0;i*xs<=xm+1e-9;i++){const t=i*xs;o+=`<line class="gl" x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${B}"/><text x="${X(t)}" y="${B+18}" text-anchor="middle">${fmt(t,decs(xs))}</text>`}
+  for(let i=0;i*ys<=ym+1e-9;i++){const t=i*ys;o+=`<line class="gl" x1="${L}" x2="${R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-8}" y="${Y(t)+4}" text-anchor="end">${fmt(t,decs(ys))}</text>`}
+  o+=`<line class="ax" x1="${L}" x2="${R}" y1="${B}" y2="${B}"/><line class="ax" x1="${L}" x2="${L}" y1="${T}" y2="${B}"/>`;
+  o+=`<text class="tt" x="${(L+R)/2}" y="${B+44}" text-anchor="middle">Δl (m)</text><text class="tt" transform="translate(16 ${(T+B)/2}) rotate(-90)" text-anchor="middle">F (N)</text>`;
+  const names=[...new Set(rows.map(r=>r.s))];
+  names.forEach((n,i)=>{
+    const c=col(n),rs=rows.filter(r=>r.s==n),sxx=rs.reduce((a,r)=>a+r.x*r.x,0);
+    if($("tL").checked&&sxx>0){const kk=rs.reduce((a,r)=>a+r.x*r.F,0)/sxx,xe=Math.min(xm,ym/kk);
+      o+=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(xe)}" y2="${Y(kk*xe)}" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`}
+    rs.forEach(r=>o+=`<circle cx="${X(r.x)}" cy="${Y(r.F)}" r="5.5" fill="${c}" stroke="var(--bg)" stroke-width="1.5"><title>${n}: Δl = ${fmt(r.x,3)} m, F = ${fmt(r.F)} N</title></circle>`);
+  });
+  cs.innerHTML=o;
+  $("legend").innerHTML=names.map((n,i)=>`<li><i style="background:${col(n)}"></i>${n}</li>`).join("");
+}
+function renderTable(){
+  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.s}</td><td>${fmt(r.m,2)}</td><td>${fmt(r.F,2)}</td><td>${fmt(r.x,3)}</td><td class="c4">${r.x?fmt(r.F/r.x,0):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="5">Nog geen metingen. Hang massa's op en klik op ‘Meting noteren’.</td></tr>`;
+  renderChart();
+}
+document.addEventListener("click",e=>{
+  const s=e.target.closest("[data-s]"),m=e.target.closest("[data-m]"),kk=e.target.closest("[data-k]");
+  if(s){const ns=SPRINGS[s.dataset.s];spring=ns;update()}
+  if(m&&hung.length<5){hung.push(+m.dataset.m);drawMasses();update()}
+  if(kk){hung.splice(+kk.dataset.k,1);drawMasses();update()}
+});
+$("note").onclick=()=>{if(over())return;rows.push({s:spring.n,m:mass(),F:force(),x:ext()});renderTable()};
+$("clear").onclick=()=>{rows=[];renderTable()};
+$("graph").onclick=()=>{const show=$("chart").hidden;$("chart").hidden=!show;$("graph").setAttribute("aria-pressed",show);$("graph").textContent=show?"Verberg grafiek":"Toon grafiek";renderChart()};
+$("tL").onchange=renderChart;
+["tDig","tFv","tK"].forEach(id=>$(id).onchange=update);
+$("tF").onchange=()=>{$("formula").hidden=!$("tF").checked};
+$("tC").onchange=()=>$("tbl").classList.toggle("hidecol",!$("tC").checked);
+draw();update();renderTable();requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
