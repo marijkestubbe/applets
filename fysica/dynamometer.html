@@ -93,7 +93,7 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
         <button id="note">Meting noteren</button>
         <button id="clear">Tabel wissen</button>
         <button id="graph" aria-pressed="false" aria-controls="chart">Toon grafiek</button>
-        <label class="tg"><input type="checkbox" id="tC" checked> Kolom F<sub>z</sub>/m tonen</label>
+        <label class="tg"><input type="checkbox" id="tC" checked> <span>Kolom F<sub>z</sub>/m tonen</span></label>
       </div>
       <table id="tbl"><thead><tr><th>Hemellichaam</th><th>m (kg)</th><th>F<sub>z</sub> (N)</th><th class="c3">F<sub>z</sub>/m (N/kg)</th></tr></thead><tbody id="tb"></tbody></table>
       <div class="chart" id="chart" hidden>
@@ -140,7 +140,7 @@ function staticParts(){
   for(let k=0;k<=steps;k++){
     const y=SC0+k*SCL/steps,maj=k%5==0;
     ticks.push(`<line x1="${maj?162:170}" x2="182" y1="${y}" y2="${y}" stroke="#1a1d21" stroke-width="${maj?1.6:.8}"/>`);
-    if(maj){const val=range*k/steps;labels.push(`<text x="136" y="${y+4}" text-anchor="end" font-size="12" font-weight="700" fill="#1a1d21">${fmt(val,range<5?1:0)}</text>`)}
+    if(maj){const val=range*k/steps;labels.push(`<text x="136" y="${y+4}" text-anchor="end" font-size="12" font-weight="700" fill="#1a1d21">${fmt(val,range%10?1:0)}</text>`)}
   }
   return `
   <defs>
