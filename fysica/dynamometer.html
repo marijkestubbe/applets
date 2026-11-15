@@ -47,6 +47,13 @@ th{font-size:14px;color:var(--mut);font-weight:700}
 .hidecol .c3{display:none}
 label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
 label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.chart{background:var(--card);border-radius:10px;padding:10px 12px;margin-top:10px}
+.chart svg{display:block;width:100%;height:auto}
+.chart .ax{stroke:var(--ink);stroke-width:1.4}.chart .gl{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--ink);font:13px "Atkinson Hyperlegible",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.chart .tt{font-weight:700;font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 0;padding:0;list-style:none;font-size:14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .formula{font-size:20px;font-weight:700;background:var(--card);border-radius:10px;padding:10px 14px}
 @media(max-width:760px){.app{grid-template-columns:1fr}.scene{min-height:560px}}
 </style>
@@ -85,9 +92,15 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
       <div class="row" style="margin-bottom:8px">
         <button id="note">Meting noteren</button>
         <button id="clear">Tabel wissen</button>
+        <button id="graph" aria-pressed="false" aria-controls="chart">Toon grafiek</button>
         <label class="tg"><input type="checkbox" id="tC" checked> Kolom F<sub>z</sub>/m tonen</label>
       </div>
       <table id="tbl"><thead><tr><th>Hemellichaam</th><th>m (kg)</th><th>F<sub>z</sub> (N)</th><th class="c3">F<sub>z</sub>/m (N/kg)</th></tr></thead><tbody id="tb"></tbody></table>
+      <div class="chart" id="chart" hidden>
+        <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de zwaartekracht in functie van de massa"></svg>
+        <ul class="legend" id="legend"></ul>
+        <label class="tg"><input type="checkbox" id="tL" checked> Rechte door de oorsprong tonen</label>
+      </div>
     </div>
   </section>
 </div>
@@ -187,7 +200,33 @@ function update(){
   document.querySelectorAll("[data-r]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.r==range));
 }
 function renderTable(){
+  renderChart();
   $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${fmt(r.m,2)}</td><td>${fmt(r.F,2)}</td><td class="c3">${r.m?fmt(r.F/r.m,2):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="4">Nog geen metingen. Hang massa's op en klik op ‘Meting noteren’.</td></tr>`;
+}
+const COLS=["#e4002b","#1f6fd1","#1a9a5b","#d17a00","#8a3fc4","#0f9aa8","#c2337a","#6b7a12"];
+function niceStep(max){const raw=max/5,p=10**Math.floor(Math.log10(raw)),f=raw/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+function renderChart(){
+  const cs=$("csvg");if($("chart").hidden)return;
+  const L=62,R=500,T=16,B=270,W=R-L,H=B-T;
+  if(!rows.length){cs.innerHTML=`<text x="260" y="150" text-anchor="middle">Noteer eerst metingen om de grafiek te zien.</text>`;$("legend").innerHTML="";return}
+  const xs=niceStep(Math.max(...rows.map(r=>r.m),.1)),ys=niceStep(Math.max(...rows.map(r=>r.F),.1));
+  const xm=Math.ceil(Math.max(...rows.map(r=>r.m),.1)/xs)*xs,ym=Math.ceil(Math.max(...rows.map(r=>r.F),.1)/ys)*ys;
+  const X=m=>L+m/xm*W,Y=F=>B-F/ym*H,dec=s=>s<1?(s<.1?2:1):0;
+  let o="";
+  for(let v=0;v<=xm+1e-9;v+=xs)o+=`<line class="gl" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${B}"/><text x="${X(v)}" y="${B+18}" text-anchor="middle">${fmt(v,dec(xs))}</text>`;
+  for(let v=0;v<=ym+1e-9;v+=ys)o+=`<line class="gl" x1="${L}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end">${fmt(v,dec(ys))}</text>`;
+  o+=`<line class="ax" x1="${L}" x2="${R}" y1="${B}" y2="${B}"/><line class="ax" x1="${L}" x2="${L}" y1="${T}" y2="${B}"/>`;
+  o+=`<text class="tt" x="${(L+R)/2}" y="${B+44}" text-anchor="middle">m (kg)</text><text class="tt" transform="translate(16 ${(T+B)/2}) rotate(-90)" text-anchor="middle">F<tspan baseline-shift="sub" font-size="10">z</tspan> (N)</text>`;
+  const names=[...new Set(rows.map(r=>r.b))];
+  names.forEach((n,i)=>{
+    const c=COLS[i%COLS.length],rs=rows.filter(r=>r.b==n);
+    const smm=rs.reduce((a,r)=>a+r.m*r.m,0);
+    if($("tL").checked&&smm>0){const k=rs.reduce((a,r)=>a+r.m*r.F,0)/smm,xe=Math.min(xm,ym/k);
+      o+=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(xe)}" y2="${Y(k*xe)}" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`}
+    rs.forEach(r=>o+=`<circle cx="${X(r.m)}" cy="${Y(r.F)}" r="5.5" fill="${c}" stroke="var(--bg)" stroke-width="1.5"><title>${n}: m = ${fmt(r.m)} kg, Fz = ${fmt(r.F)} N</title></circle>`);
+  });
+  cs.innerHTML=o;
+  $("legend").innerHTML=names.map((n,i)=>`<li><i style="background:${COLS[i%COLS.length]}"></i>${n}</li>`).join("");
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-b]"),m=e.target.closest("[data-m]"),r=e.target.closest("[data-r]"),k=e.target.closest("[data-k]");
@@ -198,6 +237,8 @@ document.addEventListener("click",e=>{
 });
 $("note").onclick=()=>{rows.push({b:body.n,m:mass(),F:force()});renderTable()};
 $("clear").onclick=()=>{rows=[];renderTable()};
+$("graph").onclick=()=>{const show=$("chart").hidden;$("chart").hidden=!show;$("graph").setAttribute("aria-pressed",show);$("graph").textContent=show?"Verberg grafiek":"Toon grafiek";renderChart()};
+$("tL").onchange=renderChart;
 ["tDig","tG"].forEach(id=>$(id).onchange=update);
 $("tF").onchange=()=>{$("formula").hidden=!$("tF").checked};
 $("tC").onchange=()=>$("tbl").classList.toggle("hidecol",!$("tC").checked);
