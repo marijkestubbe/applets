@@ -103,7 +103,7 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
         <table id="tbl"><thead><tr><th>Veer</th><th>m (kg)</th><th>F (N)</th><th>Δl (m)</th><th class="c4">F/Δl (N/m)</th></tr></thead><tbody id="tb"></tbody></table>
       </div>
       <div class="chart" id="chart" hidden>
-        <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de veerkracht in functie van de uitrekking"></svg>
+        <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de uitrekking in functie van de kracht"></svg>
         <ul class="legend" id="legend"></ul>
         <label class="tg"><input type="checkbox" id="tL" checked> Rechte door de oorsprong tonen</label>
       </div>
@@ -207,20 +207,21 @@ function renderChart(){
   const cs=$("csvg");if($("chart").hidden)return;
   const L=62,R=500,T=16,B=270,W=R-L,H=B-T;
   if(!rows.length){cs.innerHTML=`<text x="260" y="150" text-anchor="middle">Noteer eerst metingen om de grafiek te zien.</text>`;$("legend").innerHTML="";return}
-  const mx=Math.max(...rows.map(r=>r.x),.01),my=Math.max(...rows.map(r=>r.F),.1);
+  // horizontaal: kracht F (N); verticaal: uitrekking Δl (m)
+  const mx=Math.max(...rows.map(r=>r.F),.1),my=Math.max(...rows.map(r=>r.x),.01);
   const xs=niceStep(mx),ys=niceStep(my),xm=Math.ceil(mx/xs-1e-9)*xs,ym=Math.ceil(my/ys-1e-9)*ys;
-  const X=x=>L+x/xm*W,Y=F=>B-F/ym*H;
+  const X=F=>L+F/xm*W,Y=x=>B-x/ym*H;
   let o="";
   for(let i=0;i*xs<=xm+1e-9;i++){const t=i*xs;o+=`<line class="gl" x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${B}"/><text x="${X(t)}" y="${B+18}" text-anchor="middle">${fmt(t,decs(xs))}</text>`}
   for(let i=0;i*ys<=ym+1e-9;i++){const t=i*ys;o+=`<line class="gl" x1="${L}" x2="${R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-8}" y="${Y(t)+4}" text-anchor="end">${fmt(t,decs(ys))}</text>`}
   o+=`<line class="ax" x1="${L}" x2="${R}" y1="${B}" y2="${B}"/><line class="ax" x1="${L}" x2="${L}" y1="${T}" y2="${B}"/>`;
-  o+=`<text class="tt" x="${(L+R)/2}" y="${B+44}" text-anchor="middle">Δl (m)</text><text class="tt" transform="translate(16 ${(T+B)/2}) rotate(-90)" text-anchor="middle">F (N)</text>`;
+  o+=`<text class="tt" x="${(L+R)/2}" y="${B+44}" text-anchor="middle">F (N)</text><text class="tt" transform="translate(16 ${(T+B)/2}) rotate(-90)" text-anchor="middle">Δl (m)</text>`;
   const names=[...new Set(rows.map(r=>r.s))];
-  names.forEach((n,i)=>{
-    const c=col(n),rs=rows.filter(r=>r.s==n),sxx=rs.reduce((a,r)=>a+r.x*r.x,0);
-    if($("tL").checked&&sxx>0){const kk=rs.reduce((a,r)=>a+r.x*r.F,0)/sxx,xe=Math.min(xm,ym/kk);
-      o+=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(xe)}" y2="${Y(kk*xe)}" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`}
-    rs.forEach(r=>o+=`<circle cx="${X(r.x)}" cy="${Y(r.F)}" r="5.5" fill="${c}" stroke="var(--bg)" stroke-width="1.5"><title>${n}: Δl = ${fmt(r.x,3)} m, F = ${fmt(r.F)} N</title></circle>`);
+  names.forEach(n=>{
+    const c=col(n),rs=rows.filter(r=>r.s==n),sff=rs.reduce((a,r)=>a+r.F*r.F,0);
+    if($("tL").checked&&sff>0){const sl=rs.reduce((a,r)=>a+r.F*r.x,0)/sff,fe=Math.min(xm,ym/sl); // helling = 1/k
+      o+=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(fe)}" y2="${Y(sl*fe)}" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`}
+    rs.forEach(r=>o+=`<circle cx="${X(r.F)}" cy="${Y(r.x)}" r="5.5" fill="${c}" stroke="var(--bg)" stroke-width="1.5"><title>${n}: F = ${fmt(r.F)} N, Δl = ${fmt(r.x,3)} m</title></circle>`);
   });
   cs.innerHTML=o;
   $("legend").innerHTML=names.map((n,i)=>`<li><i style="background:${col(n)}"></i>${n}</li>`).join("");
