@@ -9,7 +9,7 @@
 <style>
 /*
 VOICE: helder klaslabo, groot leesbaar op een beamer
-IDEA: bekerglas met vloeistof, een drukdoos (trechter met membraan) die je met de muis verschuift, verbonden met een U-buismanometer
+IDEA: bekerglas met vloeistof, een vliesmanometer (trechter met membraan) die je met de muis verschuift, verbonden met een U-buismanometer
 LAYOUT: scène links, bediening rechts; onder 760px gestapeld (zelfde opbouw als de andere applets)
 */
 :root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b;--sky1:#9fd3ff;--sky2:#e6f4ff}
@@ -106,8 +106,8 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
       <input type="range" id="sl" min="5" max="30" step="0.5" value="25">
     </div>
     <div>
-      <h2>Drukdoos verplaatsen</h2>
-      <p class="hint" style="margin:0 0 6px">Sleep de drukdoos in het bekerglas, of gebruik de schuifjes.</p>
+      <h2>Vliesmanometer verplaatsen</h2>
+      <p class="hint" style="margin:0 0 6px">Sleep de vliesmanometer in het bekerglas, of gebruik de schuifjes.</p>
       <div class="sl">
         <span class="lab"><label for="sy">Verticaal: hoogte boven de bodem</label><button class="lock" id="lockY" aria-pressed="false" title="Hoogte vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path id="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span id="lockTx">Vastzetten</span></button></span><output id="oy" for="sy"></output>
         <input type="range" id="sy" min="0.5" max="32" step="0.1" value="15">
@@ -231,7 +231,7 @@ function build(){
   <text x="${MR}" y="${MTOP-12}" text-anchor="middle" font-size="12" font-weight="700" fill="#1a1d21">open</text>
   <g id="dhm"><line id="dhl1" x2="590" stroke="#15171a" stroke-dasharray="4 3"/><line id="dhl2" x2="590" stroke="#15171a" stroke-dasharray="4 3"/>
    <line id="dha" x1="584" x2="584" stroke="#15171a" stroke-width="1.6"/><g id="dht"><rect x="590" y="-13" width="94" height="24" rx="5" fill="#fff" stroke="#15171a"/><text id="dhtx" x="637" y="4" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a"></text></g></g>
-  <!-- slang en drukdoos -->
+  <!-- slang en vliesmanometer -->
   <path id="hose" fill="none" stroke="#3a3f45" stroke-width="7" stroke-linecap="round"/>
   <path id="hose2" fill="none" stroke="#6b737b" stroke-width="3" stroke-linecap="round"/>
   <g id="dep"><line id="depl" stroke="#15171a" stroke-width="1.6"/><line id="dept1" stroke="#15171a" stroke-width="1.6"/><line id="dept2" stroke="#15171a" stroke-width="1.6"/>
@@ -250,7 +250,7 @@ function scene(){
   const sf=$("surf");sf.setAttribute("y1",ly);sf.setAttribute("y2",ly);sf.setAttribute("stroke",liq.c);
   $("lname").textContent=liq.n;
   $("ground").setAttribute("fill",body.gr);
-  // drukdoos
+  // vliesmanometer
   const stemTop=RIM-28;
   $("probe").setAttribute("transform",`translate(${bx} ${by})`);
   const st=$("stem");st.setAttribute("y",stemTop-by);st.setAttribute("height",by-26-stemTop);
@@ -299,7 +299,7 @@ function update(){
   $("sl").value=level;$("sy").value=py;$("sx").value=px;
   scene();
 }
-// slepen van de drukdoos
+// slepen van de vliesmanometer
 let drag=null;
 const svgPt=e=>{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())};
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -346,7 +346,7 @@ function renderChart(){
   $("legend").innerHTML=keys.map((k,i)=>`<li><i style="background:${COLS[i%COLS.length]}"></i>${k}</li>`).join("");
 }
 function renderTable(){
-  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${r.l}</td><td>${fmt(r.x,1)}</td><td>${fmt(r.h,3)}</td><td>${fmt(r.p)}</td><td class="c6">${r.pt==null?"?":fmt(r.pt)}</td><td class="c7">${r.h?fmt(r.p/r.h):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="7">Nog geen metingen. Plaats de drukdoos en klik op ‘Meting noteren’.</td></tr>`;
+  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${r.l}</td><td>${fmt(r.x,1)}</td><td>${fmt(r.h,3)}</td><td>${fmt(r.p)}</td><td class="c6">${r.pt==null?"?":fmt(r.pt)}</td><td class="c7">${r.h?fmt(r.p/r.h):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="7">Nog geen metingen. Plaats de vliesmanometer en klik op ‘Meting noteren’.</td></tr>`;
   renderChart();
 }
 $("note").onclick=()=>{rows.push({b:body.n,l:liq.n,k:body.n+" · "+liq.n,x:px,h:depth()/100,p:phyd(),pt:body.pa==null?null:pa()+phyd()});renderTable()};
