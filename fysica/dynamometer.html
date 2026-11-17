@@ -17,6 +17,7 @@ LAYOUT: scène links, bediening rechts; onder 760px gestapeld
 :root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b;--sky1:#9fd3ff;--sky2:#e6f4ff;--gnd:#6aa84f}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
 .app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh}
 .scene{position:relative;background:linear-gradient(var(--sky1),var(--sky2));transition:background .6s;min-height:520px;overflow:hidden}
