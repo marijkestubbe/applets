@@ -166,7 +166,7 @@ const BODIES=[
 ];
 const LIQUIDS=[
  {n:"Water",r:998,c:"#5fb0f0",o:.5},
- {n:"Zeewater",r:1030,c:"#2f8fa8",o:.55},
+ {n:"Zeewater",r:1024,c:"#2f8fa8",o:.55},
  {n:"Spijsolie",r:920,c:"#e8c43a",o:.6},
  {n:"Alcohol",r:790,c:"#c9e6f2",o:.45},
  {n:"Glycerine",r:1260,c:"#d9d2ef",o:.6},
@@ -180,7 +180,7 @@ const S=15,BX0=78,BX1=362,BOT=718,RIM=190,HW=22;
 const ML=470,MR=540,MTOP=210,MBOT=640,MREST=425,MS=10,MMAX=200; // manometer: benen, 10 eenheden per cm
 let lockY=false,body=BODIES[0],liq=LIQUIDS[0],level=25,px=9,py=15,atm=false,dh=0,rows=[];
 const $=id=>document.getElementById(id);
-const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n});
+const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
 const g=()=>body.g??X_G, pa=()=>body.pa??X_PA, rho=()=>liq.r??X_R;
 const depth=()=>Math.max(0,level-py);               // cm
 const phyd=()=>rho()*g()*depth()/100;               // Pa
