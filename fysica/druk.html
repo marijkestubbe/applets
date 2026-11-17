@@ -110,9 +110,9 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
       <h2>Vliesmanometer verplaatsen</h2>
       <p class="hint" style="margin:0 0 6px">Sleep de vliesmanometer in het bekerglas, of gebruik de schuifjes.</p>
       <div class="sl">
-        <span class="lab"><label for="sy">Verticaal: hoogte boven de bodem</label><button class="lock" id="lockY" aria-pressed="false" title="Hoogte vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path id="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span id="lockTx">Vastzetten</span></button></span><output id="oy" for="sy"></output>
+        <span class="lab"><label for="sy">Verticaal: hoogte boven de bodem</label><button class="lock" data-lock="y" aria-pressed="false" title="Hoogte vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path class="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Vastzetten</span></button></span><output id="oy" for="sy"></output>
         <input type="range" id="sy" min="0.5" max="32" step="0.1" value="15">
-        <label for="sx">Horizontaal: afstand tot de linkerwand</label><output id="ox" for="sx"></output>
+        <span class="lab"><label for="sx">Horizontaal: afstand tot de linkerwand</label><button class="lock" data-lock="x" aria-pressed="false" title="Horizontale positie vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path class="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Vastzetten</span></button></span><output id="ox" for="sx"></output>
         <input type="range" id="sx" min="1.8" max="17.1" step="0.1" value="9">
       </div>
     </div>
@@ -179,7 +179,7 @@ const RHO_MAN=1000; // manometervloeistof: gekleurd water
 // scène-geometrie (svg-eenheden)
 const S=15,BX0=78,BX1=362,BOT=718,RIM=190,HW=22;
 const ML=470,MR=540,MTOP=210,MBOT=640,MREST=425,MS=10,MMAX=200; // manometer: benen, 10 eenheden per cm
-let lockY=false,body=BODIES[0],liq=LIQUIDS[0],level=25,px=9,py=15,atm=false,dh=0,rows=[];
+let lockX=false,lockY=false,body=BODIES[0],liq=LIQUIDS[0],level=25,px=9,py=15,atm=false,dh=0,rows=[];
 const $=id=>document.getElementById(id);
 const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
 const g=()=>body.g??X_G, pa=()=>body.pa??X_PA, rho=()=>liq.r??X_R;
@@ -306,13 +306,16 @@ const svgPt=e=>{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;retu
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 svg.addEventListener("pointerdown",e=>{if(!e.target.closest("#probe"))return;const q=svgPt(e);drag={dx:q.x-Xc(px),dy:q.y-Y(py)};$("probe").classList.add("drag");svg.setPointerCapture(e.pointerId);e.preventDefault()});
 svg.addEventListener("pointermove",e=>{if(!drag)return;const q=svgPt(e);
-  px=+clamp((q.x-drag.dx-BX0)/S,1.8,17.1).toFixed(1);if(!lockY)py=+clamp((BOT-(q.y-drag.dy))/S,.5,32).toFixed(1);update()});
+  if(!lockX)px=+clamp((q.x-drag.dx-BX0)/S,1.8,17.1).toFixed(1);if(!lockY)py=+clamp((BOT-(q.y-drag.dy))/S,.5,32).toFixed(1);update()});
 const end=()=>{drag=null;$("probe").classList.remove("drag")};
 svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);
 $("sl").oninput=e=>{level=+e.target.value;update()};
 $("sy").oninput=e=>{py=+e.target.value;update()};
-$("lockY").onclick=()=>{lockY=!lockY;$("lockY").setAttribute("aria-pressed",lockY);$("lockTx").textContent=lockY?"Vastgezet":"Vastzetten";
-  $("shackle").setAttribute("d",lockY?"M5 7V5a3 3 0 0 1 6 0V7":"M5 7V5a3 3 0 0 1 6 0");$("sy").disabled=lockY};
+document.querySelectorAll("[data-lock]").forEach(bt=>bt.onclick=()=>{
+  const x=bt.dataset.lock=="x",on=x?(lockX=!lockX):(lockY=!lockY);
+  bt.setAttribute("aria-pressed",on);bt.querySelector("span").textContent=on?"Vastgezet":"Vastzetten";
+  bt.querySelector(".shackle").setAttribute("d",on?"M5 7V5a3 3 0 0 1 6 0V7":"M5 7V5a3 3 0 0 1 6 0");
+  $(x?"sx":"sy").disabled=on});
 $("sx").oninput=e=>{px=+e.target.value;update()};
 $("atm").onclick=()=>{atm=!atm;update()};
 document.addEventListener("click",e=>{
