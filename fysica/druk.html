@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hydrostatische druk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: bekerglas met vloeistof, een drukdoos (trechter met membraan) die je met de muis verschuift, verbonden met een U-buismanometer
+LAYOUT: scène links, bediening rechts; onder 760px gestapeld (zelfde opbouw als de andere applets)
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b;--sky1:#9fd3ff;--sky2:#e6f4ff}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);min-height:100vh}
+.scene{display:flex;flex-direction:column;background:linear-gradient(var(--sky1),var(--sky2));transition:background .6s;min-height:620px}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 0;position:relative;z-index:2}
+.box{background:rgba(255,255,255,.94);color:#15171a;border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.place h1{margin:0;font-size:clamp(26px,3.6vw,40px);line-height:1.05}
+.place p{margin:2px 0 0;font-size:17px;font-weight:700}
+.read{font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px;text-align:right}
+.read small{display:block;font-size:13px;color:#5d636b}
+.read .big{font-size:clamp(22px,3vw,34px);font-weight:700;white-space:nowrap}
+.read .mid{font-size:clamp(17px,2vw,22px);font-weight:700;white-space:nowrap}
+.read .warn{color:#fff;background:var(--red);border-radius:6px;padding:2px 8px;font-size:14px;font-weight:700}
+.read .tot{border-top:2px solid #15171a;margin-top:4px;padding-top:4px}
+.stage{position:relative;flex:1;min-height:480px}
+.stage svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#probe{cursor:grab}#probe.drag{cursor:grabbing}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px;border:1px solid rgba(0,0,0,.25)}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.atm{display:flex;align-items:center;gap:12px;font-weight:700}
+.atm[aria-pressed=true]{background:var(--red);border-color:var(--red);color:#fff}
+.sw{width:40px;height:22px;border-radius:11px;background:var(--line);position:relative;flex:none}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.atm[aria-pressed=true] .sw{background:rgba(255,255,255,.4)}.atm[aria-pressed=true] .sw::after{left:21px}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
+.sl label{font-weight:700}
+.sl output{font-variant-numeric:tabular-nums;color:var(--mut)}
+.sl input{grid-column:1/-1;width:100%;accent-color:var(--red);height:32px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{font-size:14px;color:var(--mut);font-weight:700}
+.empty td{text-align:left;color:var(--mut);white-space:normal}
+.nototal .c6,.noratio .c7{display:none}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.formula{font-size:20px;font-weight:700;background:var(--card);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.chart{background:var(--card);border-radius:10px;padding:10px 12px;margin-top:10px}
+.chart svg{display:block;width:100%;height:auto}
+.chart .ax{stroke:var(--ink);stroke-width:1.4}.chart .gl{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--ink);font:13px "Atkinson Hyperlegible",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.chart .tt{font-weight:700;font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 0;padding:0;list-style:none;font-size:14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+@media(min-width:761px){.scene{position:sticky;top:0;height:100vh}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.scene{min-height:640px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" id="scene" aria-label="Bekerglas met vloeistof en een vloeistofmanometer">
+    <div class="hud">
+      <div class="box place"><h1 id="pname">Aarde</h1><p id="pg">g = 9,81 N/kg</p><p id="pr">Water: ρ = 1.000 kg/m³</p></div>
+      <div class="box read" id="read" aria-live="polite">
+        <span class="warn" id="mwarn" hidden>Manometer: buiten meetbereik</span>
+        <span><small>Hydrostatische druk</small><span class="big" id="rp">0 Pa</span></span>
+        <span id="ratm" hidden><small>Atmosferische druk</small><span class="mid" id="rpa">0 Pa</span></span>
+        <span id="rtot" class="tot" hidden><small>Totale druk</small><span class="big" id="rpt">0 Pa</span></span>
+      </div>
+    </div>
+    <div class="stage"><svg id="svg" viewBox="0 90 690 710" preserveAspectRatio="xMidYMax meet" aria-hidden="true"></svg></div>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Waar staan we?</h2>
+      <div class="chips" id="bodies"></div>
+    </div>
+    <div>
+      <h2>Vloeistof in het bekerglas</h2>
+      <div class="chips" id="liquids"></div>
+    </div>
+    <div class="sl">
+      <label for="sl">Vloeistofhoogte in het bekerglas</label><output id="ol" for="sl"></output>
+      <input type="range" id="sl" min="5" max="30" step="0.5" value="25">
+    </div>
+    <div>
+      <h2>Drukdoos verplaatsen</h2>
+      <p class="hint" style="margin:0 0 6px">Sleep de drukdoos in het bekerglas, of gebruik de schuifjes.</p>
+      <div class="sl">
+        <label for="sy">Verticaal: hoogte boven de bodem</label><output id="oy" for="sy"></output>
+        <input type="range" id="sy" min="0.5" max="32" step="0.1" value="15">
+        <label for="sx">Horizontaal: afstand tot de linkerwand</label><output id="ox" for="sx"></output>
+        <input type="range" id="sx" min="1.8" max="17.1" step="0.1" value="9">
+      </div>
+    </div>
+    <div>
+      <h2>Totale druk</h2>
+      <button class="atm" id="atm" aria-pressed="false"><span class="sw" aria-hidden="true"></span>Atmosferische druk meerekenen</button>
+      <p class="hint">De U-buis is aan één kant open: de manometer meet altijd het verschil met de atmosferische druk, dus de hydrostatische druk.</p>
+    </div>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tDig" checked> Druk digitaal tonen</label>
+      <label class="tg"><input type="checkbox" id="tH" checked> Diepte h tonen</label>
+      <label class="tg"><input type="checkbox" id="tDh" checked> Hoogteverschil manometer tonen</label>
+      <label class="tg"><input type="checkbox" id="tG" checked> Waarde van g tonen</label>
+      <label class="tg"><input type="checkbox" id="tRho" checked> Dichtheid tonen</label>
+      <label class="tg"><input type="checkbox" id="tF"> Formule tonen</label>
+    </div>
+    <div class="formula" id="formula" hidden>
+      <span>p<sub>hydro</sub> = ρ · g · h</span>
+      <span id="ftot" hidden>p<sub>tot</sub> = p<sub>atm</sub> + ρ · g · h</span>
+    </div>
+    <div>
+      <h2>Meettabel</h2>
+      <div class="row" style="margin-bottom:8px">
+        <button id="note">Meting noteren</button>
+        <button id="clear">Tabel wissen</button>
+        <button id="graph" aria-pressed="false" aria-controls="chart">Toon grafiek</button>
+        <label class="tg"><input type="checkbox" id="tC"> <span>Kolom p/h tonen</span></label>
+      </div>
+      <div class="tblwrap">
+        <table id="tbl" class="nototal noratio"><thead><tr><th>Hemellichaam</th><th>Vloeistof</th><th>x (cm)</th><th>h (m)</th><th>p<sub>hydro</sub> (Pa)</th><th class="c6">p<sub>tot</sub> (Pa)</th><th class="c7">p/h (Pa/m)</th></tr></thead><tbody id="tb"></tbody></table>
+      </div>
+      <div class="chart" id="chart" hidden>
+        <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de hydrostatische druk in functie van de diepte"></svg>
+        <ul class="legend" id="legend"></ul>
+        <label class="tg"><input type="checkbox" id="tL" checked> Rechte door de oorsprong tonen</label>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+{
+const rnd=(a,b,s)=>Math.round((a+Math.random()*(b-a))/s)*s;
+const BODIES=[
+ {n:"Aarde",g:9.81,pa:101325,s:["#8ccdff","#e3f3ff"],gr:"#8a6f4e"},
+ {n:"Maan",g:1.62,pa:0,s:["#05060c","#1c2030"],gr:"#a7a7a7"},
+ {n:"Mercurius",g:3.7,pa:0,s:["#07080d","#2a2620"],gr:"#8d8378"},
+ {n:"Venus",g:8.87,pa:9200000,s:["#e8c46a","#f6e2a8"],gr:"#b9893c"},
+ {n:"Mars",g:3.71,pa:610,s:["#d99a6c","#f1cfb0"],gr:"#b3542e"},
+ {n:"Jupiter",g:24.79,pa:100000,s:["#c98c55","#ead2b0"],gr:"#a8693c"},
+ {n:"Titan",g:1.35,pa:146700,s:["#c9893a","#ecc98a"],gr:"#7a5a2e"},
+ {n:"Planeet X",g:null,pa:null,s:["#3b2b5c","#7a62a8"],gr:"#4c3a73"}
+];
+const LIQUIDS=[
+ {n:"Water",r:1000,c:"#5fb0f0",o:.5},
+ {n:"Zeewater",r:1030,c:"#2f8fa8",o:.55},
+ {n:"Spijsolie",r:920,c:"#e8c43a",o:.6},
+ {n:"Alcohol",r:790,c:"#c9e6f2",o:.45},
+ {n:"Glycerine",r:1260,c:"#d9d2ef",o:.6},
+ {n:"Kwik",r:13600,c:"#a9b0b8",o:.95},
+ {n:"Vloeistof X",r:null,c:"#c04f8a",o:.5}
+];
+const X_G=rnd(2,30,.1),X_PA=rnd(20000,200000,100),X_R=rnd(700,1500,10);
+const RHO_MAN=1000; // manometervloeistof: gekleurd water
+// scène-geometrie (svg-eenheden)
+const S=15,BX0=78,BX1=362,BOT=718,RIM=190,HW=22;
+const ML=470,MR=540,MTOP=210,MBOT=640,MREST=425,MS=10,MMAX=200; // manometer: benen, 10 eenheden per cm
+let body=BODIES[0],liq=LIQUIDS[0],level=25,px=9,py=15,atm=false,dh=0,rows=[];
+const $=id=>document.getElementById(id);
+const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n});
+const g=()=>body.g??X_G, pa=()=>body.pa??X_PA, rho=()=>liq.r??X_R;
+const depth=()=>Math.max(0,level-py);               // cm
+const phyd=()=>rho()*g()*depth()/100;               // Pa
+const dhMan=()=>phyd()/(RHO_MAN*g())*100;           // cm hoogteverschil in de U-buis
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const Y=cm=>BOT-cm*S, Xc=cm=>BX0+cm*S;
+
+$("bodies").innerHTML=BODIES.map((b,i)=>`<button data-b="${i}" aria-pressed="${i==0}">${b.n}</button>`).join("");
+$("liquids").innerHTML=LIQUIDS.map((l,i)=>`<button data-l="${i}" aria-pressed="${i==0}"><i style="background:${l.c}"></i>${l.n}</button>`).join("");
+
+const svg=$("svg");
+function build(){
+  let ruler="";
+  for(let c=0;c<=34;c++){const y=Y(c),maj=c%5==0;
+    ruler+=`<line x1="${maj?46:52}" x2="62" y1="${y}" y2="${y}" stroke="#1a1d21" stroke-width="${maj?1.4:.7}"/>`;
+    if(maj)ruler+=`<text x="43" y="${y+4}" text-anchor="end" font-size="12" font-weight="700" fill="#1a1d21">${c}</text>`;}
+  let mscale="";
+  for(let c=-20;c<=20;c++){const y=MREST-c*MS,maj=c%5==0;
+    mscale+=`<line x1="${505-(maj?12:6)}" x2="${505+(maj?12:6)}" y1="${y}" y2="${y}" stroke="#1a1d21" stroke-width="${maj?1.3:.6}"/>`;
+    if(maj&&c)mscale+=`<text x="505" y="${y-3}" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1d21">${Math.abs(c)}</text>`;}
+  const U=`M${ML} ${MTOP} V${MBOT} A35 35 0 0 0 ${MR} ${MBOT} V${MTOP}`;
+  svg.innerHTML=`
+  <defs>
+   <linearGradient id="glass" x1="0" x2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".5"/><stop offset=".25" stop-color="#ffffff" stop-opacity=".15"/><stop offset="1" stop-color="#ffffff" stop-opacity=".35"/></linearGradient>
+   <linearGradient id="metal" x1="0" x2="1"><stop offset="0" stop-color="#6f7882"/><stop offset=".45" stop-color="#e3e7eb"/><stop offset="1" stop-color="#7f8891"/></linearGradient>
+  </defs>
+  <rect id="ground" x="-400" y="726" width="1500" height="120"/>
+  <!-- meetlat -->
+  <rect x="20" y="${Y(34)-10}" width="44" height="${34*S+20}" rx="4" fill="#f7e9b8" stroke="#a88f45"/>
+  ${ruler}<text x="24" y="${Y(34)-14}" font-size="11" font-weight="700" fill="#1a1d21">cm</text>
+  <!-- vloeistof en bekerglas -->
+  <rect id="liq" x="${BX0}" width="${BX1-BX0}"/>
+  <line id="surf" x1="${BX0}" x2="${BX1}" stroke-width="2"/>
+  <text id="lname" x="${(BX0+BX1)/2}" y="${BOT-12}" text-anchor="middle" font-size="15" font-weight="700" fill="#15171a" opacity=".75"></text>
+  <path d="M${BX0-8} ${RIM-6} q4 0 6 6 V${BOT} q0 8 8 8 H${BX1-6} q8 0 8 -8 V${RIM} q2 -6 6 -6" fill="none" stroke="#7d8a94" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="${BX0-2}" y="${RIM}" width="${BX1-BX0+4}" height="${BOT-RIM+6}" fill="url(#glass)" pointer-events="none"/>
+  ${[5,10,15,20,25,30].map(c=>`<line x1="${BX1-26}" x2="${BX1-2}" y1="${Y(c)}" y2="${Y(c)}" stroke="#7d8a94" stroke-width="1.2"/><text x="${BX1-30}" y="${Y(c)+4}" text-anchor="end" font-size="10" fill="#4b555d">${c}</text>`).join("")}
+  <!-- manometer -->
+  <rect x="455" y="${MTOP-20}" width="100" height="${MBOT-MTOP+90}" rx="6" fill="#e9dcc0" stroke="#a88f45"/>
+  <rect x="440" y="${BOT}" width="130" height="10" rx="3" fill="#2c3036"/>
+  <rect x="${505-14}" y="${MREST-205}" width="28" height="410" fill="#fffbea" stroke="#c9b67a"/>
+  ${mscale}
+  <line x1="${505-14}" x2="${505+14}" y1="${MREST}" y2="${MREST}" stroke="#1a1d21" stroke-width="1.6"/><text x="505" y="${MREST+13}" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1d21">0</text>
+  <text x="505" y="${MBOT+58}" text-anchor="middle" font-size="11" fill="#1a1d21">cm</text>
+  <path d="${U}" fill="none" stroke="#8d9aa4" stroke-width="17" stroke-linecap="round"/>
+  <path d="${U}" fill="none" stroke="#f6fafc" stroke-width="12" stroke-linecap="round"/>
+  <path id="mfl" fill="none" stroke="#d4243b" stroke-width="10"/>
+  <text x="${MR}" y="${MTOP-12}" text-anchor="middle" font-size="12" font-weight="700" fill="#1a1d21">open</text>
+  <g id="dhm"><line id="dhl1" x2="590" stroke="#15171a" stroke-dasharray="4 3"/><line id="dhl2" x2="590" stroke="#15171a" stroke-dasharray="4 3"/>
+   <line id="dha" x1="584" x2="584" stroke="#15171a" stroke-width="1.6"/><g id="dht"><rect x="590" y="-13" width="94" height="24" rx="5" fill="#fff" stroke="#15171a"/><text id="dhtx" x="637" y="4" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a"></text></g></g>
+  <!-- slang en drukdoos -->
+  <path id="hose" fill="none" stroke="#3a3f45" stroke-width="7" stroke-linecap="round"/>
+  <path id="hose2" fill="none" stroke="#6b737b" stroke-width="3" stroke-linecap="round"/>
+  <g id="dep"><line id="depl" stroke="#15171a" stroke-width="1.6"/><line id="dept1" stroke="#15171a" stroke-width="1.6"/><line id="dept2" stroke="#15171a" stroke-width="1.6"/>
+   <g id="depg"><rect y="-13" width="86" height="24" rx="5" fill="#fff" stroke="#15171a"/><text id="deptx" y="4" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a"></text></g></g>
+  <g id="probe" role="presentation">
+   <rect id="stem" x="-4" width="8" fill="#e8eef2" stroke="#7d8a94" stroke-width="1.5"/>
+   <path d="M${-HW} 0 C${-HW} -14 -8 -20 -5 -26 L5 -26 C8 -20 ${HW} -14 ${HW} 0" fill="rgba(235,242,246,.85)" stroke="#5d6a74" stroke-width="2"/>
+   <path id="mem" fill="none" stroke="#2c3036" stroke-width="3" stroke-linecap="round"/>
+   <circle r="3" fill="#e4002b"/>
+   <rect x="${-HW-8}" y="-34" width="${2*HW+16}" height="44" fill="transparent"/>
+  </g>`;
+}
+function scene(){
+  const ly=Y(level),bx=Xc(px),by=Y(py),h=depth();
+  const liqEl=$("liq");liqEl.setAttribute("y",ly);liqEl.setAttribute("height",BOT-ly);liqEl.setAttribute("fill",liq.c);liqEl.setAttribute("fill-opacity",liq.o);
+  const sf=$("surf");sf.setAttribute("y1",ly);sf.setAttribute("y2",ly);sf.setAttribute("stroke",liq.c);
+  $("lname").textContent=liq.n;
+  $("ground").setAttribute("fill",body.gr);
+  // drukdoos
+  const stemTop=RIM-28;
+  $("probe").setAttribute("transform",`translate(${bx} ${by})`);
+  const st=$("stem");st.setAttribute("y",stemTop-by);st.setAttribute("height",by-26-stemTop);
+  const bulge=h>0?Math.min(10,1+phyd()/400):0; // membraan wordt ingedrukt
+  $("mem").setAttribute("d",`M${-HW} 0 Q0 ${-bulge} ${HW} 0`);
+  const hp=`M${bx} ${stemTop} C${bx} ${stemTop-60} ${ML} ${MTOP-90} ${ML} ${MTOP}`;
+  $("hose").setAttribute("d",hp);$("hose2").setAttribute("d",hp);
+  // diepte-pijl
+  const showD=$("tH").checked&&h>0.05;$("dep").style.display=showD?"":"none";
+  if(showD){const side=bx>BX1-120?-1:1,ax=bx+side*(HW+16);
+    const set=(id,a)=>Object.entries(a).forEach(([k,v])=>$(id).setAttribute(k,v));
+    set("depl",{x1:ax,x2:ax,y1:ly,y2:by});set("dept1",{x1:ax-6,x2:ax+6,y1:ly,y2:ly});set("dept2",{x1:ax-6,x2:ax+6,y1:by,y2:by});
+    const tx=side>0?ax+6:ax-92,ty=(ly+by)/2;$("depg").setAttribute("transform",`translate(${tx} ${ty})`);
+    $("depg").querySelector("rect").setAttribute("x",0);$("deptx").setAttribute("x",43);$("deptx").textContent="h = "+fmt(h,1)+" cm";}
+}
+function mano(){
+  const sh=Math.min(dh/2*MS,MMAX),yl=MREST+sh,yr=MREST-sh;
+  $("mfl").setAttribute("d",`M${ML} ${yl} V${MBOT} A35 35 0 0 0 ${MR} ${MBOT} V${yr}`);
+  const show=$("tDh").checked&&dh>0.15;$("dhm").style.display=show?"":"none";
+  if(show){[["dhl1",yl,ML],["dhl2",yr,MR]].forEach(([id,y,x])=>{const l=$(id);l.setAttribute("x1",x+6);l.setAttribute("y1",y);l.setAttribute("y2",y)});
+    $("dha").setAttribute("y1",yr);$("dha").setAttribute("y2",yl);
+    $("dht").setAttribute("transform",`translate(0 ${(yl+yr)/2})`);$("dhtx").textContent=dh>2*MMAX/MS?"Δh > "+fmt(2*MMAX/MS)+" cm":"Δh = "+fmt(dh,1)+" cm";}
+  $("mwarn").hidden=!(dhMan()/2*MS>MMAX);
+}
+function tick(){
+  const t=dhMan();
+  if(reduce)dh=t;else{dh+=(t-dh)*.12;if(Math.abs(t-dh)<.01)dh=t}
+  mano();requestAnimationFrame(tick);
+}
+function update(){
+  const p=phyd();
+  $("rp").textContent=fmt(p)+" Pa";
+  $("rpa").textContent=(body.pa==null?"? ":fmt(pa())+" ")+"Pa";
+  $("rpt").textContent=(body.pa==null?"? ":fmt(pa()+p)+" ")+"Pa";
+  $("ratm").hidden=$("rtot").hidden=!atm;$("ftot").hidden=!atm;
+  $("read").style.visibility=$("tDig").checked?"visible":"hidden";
+  $("pname").textContent=body.n;
+  $("pg").textContent="g = "+(body.g==null||!$("tG").checked?"? ":fmt(g(),2).replace(/,?0+$/,"")+" ")+"N/kg";
+  $("pr").textContent=liq.n+": ρ = "+(liq.r==null||!$("tRho").checked?"?":fmt(rho()))+" kg/m³";
+  const sc=$("scene");sc.style.setProperty("--sky1",body.s[0]);sc.style.setProperty("--sky2",body.s[1]);
+  document.querySelectorAll("[data-b]").forEach(b=>b.setAttribute("aria-pressed",BODIES[b.dataset.b]==body));
+  document.querySelectorAll("[data-l]").forEach(b=>b.setAttribute("aria-pressed",LIQUIDS[b.dataset.l]==liq));
+  $("atm").setAttribute("aria-pressed",atm);
+  $("tbl").classList.toggle("nototal",!atm);
+  $("ol").textContent=fmt(level,1)+" cm";$("oy").textContent=fmt(py,1)+" cm  (diepte h = "+fmt(depth(),1)+" cm)";$("ox").textContent=fmt(px,1)+" cm";
+  $("sl").value=level;$("sy").value=py;$("sx").value=px;
+  scene();
+}
+// slepen van de drukdoos
+let drag=null;
+const svgPt=e=>{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+svg.addEventListener("pointerdown",e=>{if(!e.target.closest("#probe"))return;const q=svgPt(e);drag={dx:q.x-Xc(px),dy:q.y-Y(py)};$("probe").classList.add("drag");svg.setPointerCapture(e.pointerId);e.preventDefault()});
+svg.addEventListener("pointermove",e=>{if(!drag)return;const q=svgPt(e);
+  px=+clamp((q.x-drag.dx-BX0)/S,1.8,17.1).toFixed(1);py=+clamp((BOT-(q.y-drag.dy))/S,.5,32).toFixed(1);update()});
+const end=()=>{drag=null;$("probe").classList.remove("drag")};
+svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);
+$("sl").oninput=e=>{level=+e.target.value;update()};
+$("sy").oninput=e=>{py=+e.target.value;update()};
+$("sx").oninput=e=>{px=+e.target.value;update()};
+$("atm").onclick=()=>{atm=!atm;update()};
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-b]"),l=e.target.closest("[data-l]");
+  if(b){body=BODIES[b.dataset.b];update()}
+  if(l){liq=LIQUIDS[l.dataset.l];update()}
+});
+// meettabel en grafiek
+const COLS=["#e4002b","#1f6fd1","#1a9a5b","#d17a00","#8a3fc4","#0f9aa8","#c2337a","#6b7a12"];
+function niceStep(max){const raw=max/5,p=10**Math.floor(Math.log10(raw)),f=raw/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+const decs=s=>Math.max(0,-Math.floor(Math.log10(s)+1e-9))+(String(s).includes("25")?1:0);
+function renderChart(){
+  const cs=$("csvg");if($("chart").hidden)return;
+  const L=70,R=500,T=16,B=270,W=R-L,H=B-T;
+  if(!rows.length){cs.innerHTML=`<text x="260" y="150" text-anchor="middle">Noteer eerst metingen om de grafiek te zien.</text>`;$("legend").innerHTML="";return}
+  const mx=Math.max(...rows.map(r=>r.h),.01),my=Math.max(...rows.map(r=>r.p),1);
+  const xs=niceStep(mx),ys=niceStep(my),xm=Math.ceil(mx/xs-1e-9)*xs,ym=Math.ceil(my/ys-1e-9)*ys;
+  const X=x=>L+x/xm*W,Yc=v=>B-v/ym*H;
+  let o="";
+  for(let i=0;i*xs<=xm+1e-9;i++){const t=i*xs;o+=`<line class="gl" x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${B}"/><text x="${X(t)}" y="${B+18}" text-anchor="middle">${fmt(t,decs(xs))}</text>`}
+  for(let i=0;i*ys<=ym+1e-9;i++){const t=i*ys;o+=`<line class="gl" x1="${L}" x2="${R}" y1="${Yc(t)}" y2="${Yc(t)}"/><text x="${L-8}" y="${Yc(t)+4}" text-anchor="end">${fmt(t,decs(ys))}</text>`}
+  o+=`<line class="ax" x1="${L}" x2="${R}" y1="${B}" y2="${B}"/><line class="ax" x1="${L}" x2="${L}" y1="${T}" y2="${B}"/>`;
+  o+=`<text class="tt" x="${(L+R)/2}" y="${B+44}" text-anchor="middle">h (m)</text><text class="tt" transform="translate(14 ${(T+B)/2}) rotate(-90)" text-anchor="middle">p<tspan baseline-shift="sub" font-size="10">hydro</tspan> (Pa)</text>`;
+  const keys=[...new Set(rows.map(r=>r.k))];
+  keys.forEach((k,i)=>{
+    const c=COLS[i%COLS.length],rs=rows.filter(r=>r.k==k),sxx=rs.reduce((a,r)=>a+r.h*r.h,0);
+    if($("tL").checked&&sxx>0){const sl=rs.reduce((a,r)=>a+r.h*r.p,0)/sxx,xe=Math.min(xm,ym/sl);
+      o+=`<line x1="${X(0)}" y1="${Yc(0)}" x2="${X(xe)}" y2="${Yc(sl*xe)}" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`}
+    rs.forEach(r=>o+=`<circle cx="${X(r.h)}" cy="${Yc(r.p)}" r="5.5" fill="${c}" stroke="var(--bg)" stroke-width="1.5"><title>${k}: h = ${fmt(r.h,3)} m, p = ${fmt(r.p)} Pa</title></circle>`);
+  });
+  cs.innerHTML=o;
+  $("legend").innerHTML=keys.map((k,i)=>`<li><i style="background:${COLS[i%COLS.length]}"></i>${k}</li>`).join("");
+}
+function renderTable(){
+  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${r.l}</td><td>${fmt(r.x,1)}</td><td>${fmt(r.h,3)}</td><td>${fmt(r.p)}</td><td class="c6">${r.pt==null?"?":fmt(r.pt)}</td><td class="c7">${r.h?fmt(r.p/r.h):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="7">Nog geen metingen. Plaats de drukdoos en klik op ‘Meting noteren’.</td></tr>`;
+  renderChart();
+}
+$("note").onclick=()=>{rows.push({b:body.n,l:liq.n,k:body.n+" · "+liq.n,x:px,h:depth()/100,p:phyd(),pt:body.pa==null?null:pa()+phyd()});renderTable()};
+$("clear").onclick=()=>{rows=[];renderTable()};
+$("graph").onclick=()=>{const show=$("chart").hidden;$("chart").hidden=!show;$("graph").setAttribute("aria-pressed",show);$("graph").textContent=show?"Verberg grafiek":"Toon grafiek";renderChart()};
+$("tL").onchange=renderChart;
+["tDig","tH","tDh","tG","tRho"].forEach(id=>$(id).onchange=update);
+$("tF").onchange=()=>{$("formula").hidden=!$("tF").checked};
+$("tC").onchange=()=>$("tbl").classList.toggle("noratio",!$("tC").checked);
+build();update();renderTable();dh=reduce?dhMan():0;requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
