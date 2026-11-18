@@ -36,6 +36,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hype
 .back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
 h2{font-size:17px;margin:0 0 8px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips svg{width:16px;height:22px;margin-right:6px;vertical-align:-5px}
 .chips i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px;border:1px solid rgba(0,0,0,.25)}
 button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
@@ -59,7 +60,7 @@ button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var
 .tblwrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2),th:nth-child(3),td:nth-child(3){text-align:left}
 th{font-size:14px;color:var(--mut);font-weight:700}
 .empty td{text-align:left;color:var(--mut);white-space:normal}
 .nototal .c6,.noratio .c7{display:none}
@@ -99,21 +100,26 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
       <div class="chips" id="bodies"></div>
     </div>
     <div>
-      <h2>Vloeistof in het bekerglas</h2>
+      <h2>Vloeistof in het vat</h2>
       <div class="chips" id="liquids"></div>
     </div>
+    <div>
+      <h2>Vorm van het vat</h2>
+      <div class="chips" id="vessels"></div>
+      <p class="hint">Vergelijk de druk op dezelfde diepte in vaten met een andere vorm.</p>
+    </div>
     <div class="sl">
-      <label for="sl">Vloeistofhoogte in het bekerglas</label><output id="ol" for="sl"></output>
+      <label for="sl">Vloeistofhoogte in het vat</label><output id="ol" for="sl"></output>
       <input type="range" id="sl" min="5" max="30" step="0.5" value="25">
     </div>
     <div>
       <h2>Vliesmanometer verplaatsen</h2>
-      <p class="hint" style="margin:0 0 6px">Sleep de vliesmanometer in het bekerglas, of gebruik de schuifjes.</p>
+      <p class="hint" style="margin:0 0 6px">Sleep de vliesmanometer in het vat, of gebruik de schuifjes.</p>
       <div class="sl">
         <span class="lab"><label for="sy">Verticaal: hoogte boven de bodem</label><button class="lock" data-lock="y" aria-pressed="false" title="Hoogte vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path class="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Vastzetten</span></button></span><output id="oy" for="sy"></output>
         <input type="range" id="sy" min="0.5" max="32" step="0.1" value="15">
-        <span class="lab"><label for="sx">Horizontaal: afstand tot de linkerwand</label><button class="lock" data-lock="x" aria-pressed="false" title="Horizontale positie vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path class="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Vastzetten</span></button></span><output id="ox" for="sx"></output>
-        <input type="range" id="sx" min="1.8" max="17.1" step="0.1" value="9">
+        <span class="lab"><label for="sx">Horizontaal: afstand tot het midden</label><button class="lock" data-lock="x" aria-pressed="false" title="Horizontale positie vastzetten"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="currentColor"/><path class="shackle" d="M5 7V5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Vastzetten</span></button></span><output id="ox" for="sx"></output>
+        <input type="range" id="sx" min="-7.8" max="7.8" step="0.1" value="0">
       </div>
     </div>
     <div>
@@ -128,6 +134,7 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
       <label class="tg"><input type="checkbox" id="tG" checked> Waarde van g tonen</label>
       <label class="tg"><input type="checkbox" id="tRho" checked> Dichtheid tonen</label>
       <label class="tg"><input type="checkbox" id="tF"> Formule tonen</label>
+      <label class="tg"><input type="checkbox" id="tV"> Volume en massa vloeistof tonen</label>
     </div>
     <div class="formula" id="formula" hidden>
       <span>p<sub>hydro</sub> = ρ · g · h</span>
@@ -142,7 +149,7 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
         <label class="tg"><input type="checkbox" id="tC"> <span>Kolom p/h tonen</span></label>
       </div>
       <div class="tblwrap">
-        <table id="tbl" class="nototal noratio"><thead><tr><th>Hemellichaam</th><th>Vloeistof</th><th>x (cm)</th><th>h (m)</th><th>p<sub>hydro</sub> (Pa)</th><th class="c6">p<sub>tot</sub> (Pa)</th><th class="c7">p/h (Pa/m)</th></tr></thead><tbody id="tb"></tbody></table>
+        <table id="tbl" class="nototal noratio"><thead><tr><th>Hemellichaam</th><th>Vloeistof</th><th>Vat</th><th>x (cm)</th><th>h (m)</th><th>p<sub>hydro</sub> (Pa)</th><th class="c6">p<sub>tot</sub> (Pa)</th><th class="c7">p/h (Pa/m)</th></tr></thead><tbody id="tb"></tbody></table>
       </div>
       <div class="chart" id="chart" hidden>
         <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de hydrostatische druk in functie van de diepte"></svg>
@@ -178,12 +185,20 @@ const LIQUIDS=[
  {n:"Zeewater",r:1024,c:"#2f8fa8",o:.55},
  {n:"Vloeistof X",r:null,c:"#c04f8a",o:.5}
 ];
+// vaten: halve breedte w (cm) als functie van de hoogte y (cm) boven de bodem; rotatiesymmetrisch
+const VESSELS=[
+ {n:"Breed bekerglas",w:y=>9.4},
+ {n:"Smal vat",w:y=>2.6},
+ {n:"Naar boven breder",w:y=>2.6+.2*y},
+ {n:"Naar boven smaller",w:y=>9.4-.2*y},
+ {n:"Fles met hals",w:y=>y<12?9.4:y<17?9.4-(y-12)*1.36:2.6}
+];
 const X_G=rnd(2,30,.1),X_PA=rnd(20000,200000,100),X_R=rnd(700,1500,10);
 const RHO_MAN=998; // manometervloeistof: gekleurd water
 // scène-geometrie (svg-eenheden)
-const S=15,BX0=78,BX1=362,BOT=718,RIM=190,HW=22;
+const S=15,CX=220,BOT=718,RIM=190,HW=22,TOPCM=(BOT-RIM)/S;
 const ML=470,MR=540,MTOP=210,MBOT=640,MREST=425,MS=10,MMAX=200; // manometer: benen, 10 eenheden per cm
-let lockX=false,lockY=false,body=BODIES[0],liq=LIQUIDS.find(l=>l.n=="Water"),level=25,px=9,py=15,atm=false,dh=0,rows=[];
+let vessel=VESSELS[0],lockX=false,lockY=false,body=BODIES[0],liq=LIQUIDS.find(l=>l.n=="Water"),level=25,px=0,py=15,atm=false,dh=0,rows=[];
 const $=id=>document.getElementById(id);
 const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
 const g=()=>body.g??X_G, pa=()=>body.pa??X_PA, rho=()=>liq.r??X_R;
@@ -191,9 +206,17 @@ const depth=()=>Math.max(0,level-py);               // cm
 const phyd=()=>rho()*g()*depth()/100;               // Pa
 const dhMan=()=>phyd()/(RHO_MAN*g())*100;           // cm hoogteverschil in de U-buis
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-const Y=cm=>BOT-cm*S, Xc=cm=>BX0+cm*S;
+const Y=cm=>BOT-cm*S, Xc=cm=>CX+cm*S;
+const wv=y=>vessel.w(Math.max(0,Math.min(TOPCM,y)));
+const minW=(a,b)=>{let m=Infinity;for(let y=a;y<=b+1e-9;y+=.1)m=Math.min(m,wv(y));return m};
+// hoe ver de vliesmanometer uit het midden mag: de trechter moet passen en de buis moet er boven uit kunnen
+const xLim=y=>Math.max(0,Math.floor(Math.min(minW(y-.1,y+1.9)-1.6,minW(y,TOPCM)-.4)*10)/10);
+const volume=()=>{let v=0;for(let y=0;y<level;y+=.05){const w=wv(y+.025);v+=Math.PI*w*w*Math.min(.05,level-y)}return v}; // cm³
+const icon=v=>{const pts=[];for(let y=0;y<=34;y+=2)pts.push([v.w(y),y]);const X=w=>8+w*.75,Yi=y=>21-y*.55;
+  return `<svg viewBox="0 0 16 22" aria-hidden="true"><path d="M${pts.map(([w,y])=>`${X(-w)} ${Yi(y)}`).reverse().join(" L")} L${pts.map(([w,y])=>`${X(w)} ${Yi(y)}`).join(" L")}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`};
 
 $("bodies").innerHTML=BODIES.map((b,i)=>`<button data-b="${i}" aria-pressed="${i==0}">${b.n}</button>`).join("");
+$("vessels").innerHTML=VESSELS.map((v,i)=>`<button data-v="${i}" aria-pressed="${i==0}">${icon(v)}${v.n}</button>`).join("");
 $("liquids").innerHTML=LIQUIDS.map((l,i)=>`<button data-l="${i}" aria-pressed="${l.n=="Water"}"><i style="background:${l.c}"></i>${l.n}</button>`).join("");
 
 const svg=$("svg");
@@ -217,12 +240,13 @@ function build(){
   <rect x="20" y="${Y(34)-10}" width="44" height="${34*S+20}" rx="4" fill="#f7e9b8" stroke="#a88f45"/>
   ${ruler}<text x="24" y="${Y(34)-14}" font-size="11" font-weight="700" fill="#1a1d21">cm</text>
   <!-- vloeistof en bekerglas -->
-  <rect id="liq" x="${BX0}" width="${BX1-BX0}"/>
-  <line id="surf" x1="${BX0}" x2="${BX1}" stroke-width="2"/>
-  <text id="lname" x="${(BX0+BX1)/2}" y="${BOT-12}" text-anchor="middle" font-size="15" font-weight="700" fill="#15171a" opacity=".75"></text>
-  <path d="M${BX0-8} ${RIM-6} q4 0 6 6 V${BOT} q0 8 8 8 H${BX1-6} q8 0 8 -8 V${RIM} q2 -6 6 -6" fill="none" stroke="#7d8a94" stroke-width="4" stroke-linejoin="round"/>
-  <rect x="${BX0-2}" y="${RIM}" width="${BX1-BX0+4}" height="${BOT-RIM+6}" fill="url(#glass)" pointer-events="none"/>
-  ${[5,10,15,20,25,30].map(c=>`<line x1="${BX1-26}" x2="${BX1-2}" y1="${Y(c)}" y2="${Y(c)}" stroke="#7d8a94" stroke-width="1.2"/><text x="${BX1-30}" y="${Y(c)+4}" text-anchor="end" font-size="10" fill="#4b555d">${c}</text>`).join("")}
+  <path id="liq"/>
+  <line id="surf" stroke-width="2"/>
+  <text id="lname" x="${CX}" y="${BOT-12}" text-anchor="middle" font-size="15" font-weight="700" fill="#15171a" opacity=".75"></text>
+  <path id="vglass" fill="url(#glass)" pointer-events="none"/>
+  <path id="vwall" fill="none" stroke="#7d8a94" stroke-width="4" stroke-linejoin="round"/>
+  <g id="vmarks"></g>
+  <text id="vol" x="${CX}" y="${BOT+45}" text-anchor="middle" font-size="17" font-weight="700" fill="#fff"></text>
   <!-- manometer -->
   <rect x="455" y="${MTOP-20}" width="100" height="${MBOT-MTOP+90}" rx="6" fill="#e9dcc0" stroke="#a88f45"/>
   <rect x="440" y="${BOT}" width="130" height="10" rx="3" fill="#2c3036"/>
@@ -249,11 +273,21 @@ function build(){
    <rect x="${-HW-8}" y="-34" width="${2*HW+16}" height="44" fill="transparent"/>
   </g>`;
 }
+const inner=top=>{const L=[],R=[];for(let y=0;y<top;y+=.25){L.push(`${Xc(-wv(y))} ${Y(y)}`);R.push(`${Xc(wv(y))} ${Y(y)}`)}
+  L.push(`${Xc(-wv(top))} ${Y(top)}`);R.push(`${Xc(wv(top))} ${Y(top)}`);return "M"+L.reverse().join(" L")+" L"+R.join(" L")+"Z"};
+function drawVessel(){
+  $("vglass").setAttribute("d",inner(TOPCM));
+  const L=[],R=[];for(let y=0;y<=TOPCM+1e-9;y+=.25){L.push(`${Xc(-wv(y))-2} ${Y(y)}`);R.push(`${Xc(wv(y))+2} ${Y(y)}`)}
+  const tl=Xc(-wv(TOPCM))-2,tr=Xc(wv(TOPCM))+2;
+  $("vwall").setAttribute("d",`M${tl-7} ${RIM-6} Q${tl-1} ${RIM-6} ${tl} ${RIM} L${L.reverse().join(" L")} Q${Xc(-wv(0))-2} ${BOT+8} ${Xc(-wv(0))+8} ${BOT+8} L${Xc(wv(0))-8} ${BOT+8} Q${Xc(wv(0))+2} ${BOT+8} ${R.join(" L")} Q${tr+1} ${RIM-6} ${tr+7} ${RIM-6}`);
+  $("vmarks").innerHTML=[5,10,15,20,25,30].map(c=>{const x=Xc(wv(c));return `<line x1="${x-14}" x2="${x}" y1="${Y(c)}" y2="${Y(c)}" stroke="#7d8a94" stroke-width="1.2"/><text x="${x-17}" y="${Y(c)+4}" text-anchor="end" font-size="10" fill="#4b555d">${c}</text>`}).join("");
+}
 function scene(){
   const ly=Y(level),bx=Xc(px),by=Y(py),h=depth();
-  const liqEl=$("liq");liqEl.setAttribute("y",ly);liqEl.setAttribute("height",BOT-ly);liqEl.setAttribute("fill",liq.c);liqEl.setAttribute("fill-opacity",liq.o);
-  const sf=$("surf");sf.setAttribute("y1",ly);sf.setAttribute("y2",ly);sf.setAttribute("stroke",liq.c);
-  $("lname").textContent=liq.n;
+  const liqEl=$("liq");liqEl.setAttribute("d",inner(level));liqEl.setAttribute("fill",liq.c);liqEl.setAttribute("fill-opacity",liq.o);
+  const sf=$("surf");sf.setAttribute("x1",Xc(-wv(level)));sf.setAttribute("x2",Xc(wv(level)));sf.setAttribute("y1",ly);sf.setAttribute("y2",ly);sf.setAttribute("stroke",liq.c);
+  $("lname").textContent=wv(1)>5?liq.n:"";
+  const V=volume();$("vol").textContent=$("tV").checked?`V = ${fmt(V/1000,2)} L   m = ${fmt(V/1e6*rho(),2)} kg`:"";
   $("ground").setAttribute("fill",body.gr);
   // vliesmanometer
   const stemTop=RIM-28;
@@ -265,7 +299,7 @@ function scene(){
   $("hose").setAttribute("d",hp);$("hose2").setAttribute("d",hp);
   // diepte-pijl
   const showD=$("tH").checked&&h>0.05;$("dep").style.display=showD?"":"none";
-  if(showD){const side=bx>BX1-120?-1:1,ax=bx+side*(HW+16);
+  if(showD){const side=bx+130>Xc(wv(py))&&bx-130>Xc(-wv(py))?-1:1,ax=bx+side*(HW+16);
     const set=(id,a)=>Object.entries(a).forEach(([k,v])=>$(id).setAttribute(k,v));
     set("depl",{x1:ax,x2:ax,y1:ly,y2:by});set("dept1",{x1:ax-6,x2:ax+6,y1:ly,y2:ly});set("dept2",{x1:ax-6,x2:ax+6,y1:by,y2:by});
     const tx=side>0?ax+6:ax-92,ty=(ly+by)/2;$("depg").setAttribute("transform",`translate(${tx} ${ty})`);
@@ -300,7 +334,9 @@ function update(){
   document.querySelectorAll("[data-l]").forEach(b=>b.setAttribute("aria-pressed",LIQUIDS[b.dataset.l]==liq));
   $("atm").setAttribute("aria-pressed",atm);
   $("tbl").classList.toggle("nototal",!atm);
-  $("ol").textContent=fmt(level,1)+" cm";$("oy").textContent=fmt(py,1)+" cm  (diepte h = "+fmt(depth(),1)+" cm)";$("ox").textContent=fmt(px,1)+" cm";
+  const lim=xLim(py);px=Math.max(-lim,Math.min(lim,px));$("sx").min=-lim;$("sx").max=lim;
+  document.querySelectorAll("[data-v]").forEach(b=>b.setAttribute("aria-pressed",VESSELS[b.dataset.v]==vessel));
+  $("ol").textContent=fmt(level,1)+" cm";$("oy").textContent=fmt(py,1)+" cm  (diepte h = "+fmt(depth(),1)+" cm)";$("ox").textContent=Math.abs(px)<.05?"in het midden":fmt(Math.abs(px),1)+" cm "+(px<0?"links":"rechts");
   $("sl").value=level;$("sy").value=py;$("sx").value=px;
   scene();
 }
@@ -310,7 +346,7 @@ const svgPt=e=>{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;retu
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 svg.addEventListener("pointerdown",e=>{if(!e.target.closest("#probe"))return;const q=svgPt(e);drag={dx:q.x-Xc(px),dy:q.y-Y(py)};$("probe").classList.add("drag");svg.setPointerCapture(e.pointerId);e.preventDefault()});
 svg.addEventListener("pointermove",e=>{if(!drag)return;const q=svgPt(e);
-  if(!lockX)px=+clamp((q.x-drag.dx-BX0)/S,1.8,17.1).toFixed(1);if(!lockY)py=+clamp((BOT-(q.y-drag.dy))/S,.5,32).toFixed(1);update()});
+  if(!lockY)py=+clamp((BOT-(q.y-drag.dy))/S,.5,32).toFixed(1);if(!lockX){const l=xLim(py);px=+clamp((q.x-drag.dx-CX)/S,-l,l).toFixed(1)}update()});
 const end=()=>{drag=null;$("probe").classList.remove("drag")};
 svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);
 $("sl").oninput=e=>{level=+e.target.value;update()};
@@ -323,7 +359,8 @@ document.querySelectorAll("[data-lock]").forEach(bt=>bt.onclick=()=>{
 $("sx").oninput=e=>{px=+e.target.value;update()};
 $("atm").onclick=()=>{atm=!atm;update()};
 document.addEventListener("click",e=>{
-  const b=e.target.closest("[data-b]"),l=e.target.closest("[data-l]");
+  const b=e.target.closest("[data-b]"),l=e.target.closest("[data-l]"),v=e.target.closest("[data-v]");
+  if(v){vessel=VESSELS[v.dataset.v];drawVessel();update()}
   if(b){body=BODIES[b.dataset.b];update()}
   if(l){liq=LIQUIDS[l.dataset.l];update()}
 });
@@ -354,17 +391,17 @@ function renderChart(){
   $("legend").innerHTML=keys.map((k,i)=>`<li><i style="background:${COLS[i%COLS.length]}"></i>${k}</li>`).join("");
 }
 function renderTable(){
-  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${r.l}</td><td>${fmt(r.x,1)}</td><td>${fmt(r.h,3)}</td><td>${fmt(r.p)}</td><td class="c6">${r.pt==null?"?":fmt(r.pt)}</td><td class="c7">${r.h?fmt(r.p/r.h):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="7">Nog geen metingen. Plaats de vliesmanometer en klik op ‘Meting noteren’.</td></tr>`;
+  $("tb").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.b}</td><td>${r.l}</td><td>${r.v}</td><td>${fmt(r.x,1)}</td><td>${fmt(r.h,3)}</td><td>${fmt(r.p)}</td><td class="c6">${r.pt==null?"?":fmt(r.pt)}</td><td class="c7">${r.h?fmt(r.p/r.h):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="8">Nog geen metingen. Plaats de vliesmanometer en klik op ‘Meting noteren’.</td></tr>`;
   renderChart();
 }
-$("note").onclick=()=>{rows.push({b:body.n,l:liq.n,k:body.n+" · "+liq.n,x:px,h:depth()/100,p:phyd(),pt:body.pa==null?null:pa()+phyd()});renderTable()};
+$("note").onclick=()=>{rows.push({b:body.n,l:liq.n,v:vessel.n,k:body.n+" · "+liq.n,x:px,h:depth()/100,p:phyd(),pt:body.pa==null?null:pa()+phyd()});renderTable()};
 $("clear").onclick=()=>{rows=[];renderTable()};
 $("graph").onclick=()=>{const show=$("chart").hidden;$("chart").hidden=!show;$("graph").setAttribute("aria-pressed",show);$("graph").textContent=show?"Verberg grafiek":"Toon grafiek";renderChart()};
 $("tL").onchange=renderChart;
-["tDig","tH","tDh","tG","tRho"].forEach(id=>$(id).onchange=update);
+["tDig","tH","tDh","tG","tRho","tV"].forEach(id=>$(id).onchange=update);
 $("tF").onchange=()=>{$("formula").hidden=!$("tF").checked};
 $("tC").onchange=()=>$("tbl").classList.toggle("noratio",!$("tC").checked);
-build();update();renderTable();dh=reduce?dhMan():0;requestAnimationFrame(tick);
+build();drawVessel();update();renderTable();dh=reduce?dhMan():0;requestAnimationFrame(tick);
 }
 </script>
 </body>
