@@ -64,7 +64,12 @@ header p{margin:0;color:var(--muted);max-width:60ch}
 /* Nieuwe applet toevoegen: zet het bestand in de map van de module
    en voeg hieronder een regel toe bij het juiste thema. */
 const MODULES = [
-  { id: "biologie", naam: "Biologie", themas: [] },
+  { id: "biologie", naam: "Biologie", themas: [
+    { naam: "DNA tot eiwit", applets: [
+      { titel: "Opbouw van DNA", bestand: "biologie/dna.html",
+        uitleg: "DNA-ladder als puzzel: complementaire baseparing, het aantal waterstofbruggen en strengen aanvullen" }
+    ]}
+  ]},
   { id: "chemie",   naam: "Chemie",   themas: [] },
   { id: "fysica",   naam: "Fysica",   themas: [
     { naam: "Krachten", applets: [

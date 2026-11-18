@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opbouw van DNA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: een DNA-ladder als puzzel; purines zijn lang, pyrimidines kort, de randen tonen 2 of 3 waterstofbruggen
+LAYOUT: ladder links, bediening rechts; onder 760px gestapeld (zelfde opbouw als de andere applets)
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b;--ok:#1a9a5b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh}
+.scene{display:flex;flex-direction:column;background:linear-gradient(#eaf6ef,#d7ebe0);min-height:640px}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 0}
+.box{background:rgba(255,255,255,.95);color:#15171a;border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.place h1{margin:0;font-size:clamp(24px,3.2vw,36px);line-height:1.1}
+.place p{margin:4px 0 0;font-size:16px;max-width:34ch}
+.score{text-align:right;font-variant-numeric:tabular-nums}
+.score small{display:block;font-size:13px;color:#5d636b}
+.score b{font-size:clamp(22px,3vw,32px);white-space:nowrap}
+.score.good b{color:#1a9a5b}
+.stage{position:relative;flex:1;min-height:500px}
+.stage svg{position:absolute;inset:0;width:100%;height:100%}
+.stage [data-slot],.stage [data-gap]{cursor:pointer}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.tray{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.base{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;min-height:84px}
+.base svg{width:100%;max-width:90px;height:34px}
+.base b{font-size:20px;line-height:1}
+.base small{font-size:13px;color:var(--mut)}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.counts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;font-variant-numeric:tabular-nums}
+.counts div{background:var(--card);border-radius:10px;padding:8px;text-align:center}
+.counts small{display:block;color:var(--mut);font-size:13px}
+.counts b{font-size:22px}
+.seq{font:16px/1.6 ui-monospace,Consolas,monospace;background:var(--card);border-radius:10px;padding:10px 14px;overflow-x:auto;white-space:nowrap;margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--mut)}
+.legend span{display:flex;align-items:center;gap:6px}
+@media(min-width:761px){.scene{position:sticky;top:0;height:100vh}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.counts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" aria-label="DNA-dubbelstreng">
+    <div class="hud">
+      <div class="box place"><h1 id="mtitle">Vrij bouwen</h1><p id="mtext"></p></div>
+      <div class="box score" id="scorebox" aria-live="polite"><small id="slabel">Ingevuld</small><b id="sval">0 / 8</b></div>
+    </div>
+    <div class="stage"><svg id="svg" viewBox="0 0 600 700" preserveAspectRatio="xMidYMid meet" role="img" aria-label="DNA-ladder"></svg></div>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Wat wil je doen?</h2>
+      <div class="row" id="modes">
+        <button data-mode="vrij" aria-pressed="true">Vrij bouwen</button>
+        <button data-mode="aanvul" aria-pressed="false">Streng aanvullen</button>
+        <button data-mode="brug" aria-pressed="false">Waterstofbruggen</button>
+      </div>
+    </div>
+    <div id="traywrap">
+      <h2>Kies een base</h2>
+      <div class="tray" id="tray"></div>
+      <div class="row" style="margin-top:8px"><button id="erase">Base wissen</button></div>
+      <p class="hint">Klik eerst op een lege plaats in de ladder, daarna op een base. Met het toetsenbord kan het ook: A, T, C of G, en Delete om te wissen.</p>
+    </div>
+    <p class="hint" id="brughint" hidden>Klik tussen twee basen. Elke klik voegt een waterstofbrug toe: 0, 1, 2, 3 en dan weer 0.</p>
+    <div>
+      <h2>Opgave</h2>
+      <div class="row">
+        <span>Aantal baseparen:</span>
+        <button data-n="6" aria-pressed="false">6</button><button data-n="8" aria-pressed="true">8</button><button data-n="10" aria-pressed="false">10</button>
+      </div>
+      <label class="tg" id="mixwrap"><input type="checkbox" id="tMix"> Gegeven basen over beide strengen verspreiden</label>
+      <div class="row" style="margin-top:6px">
+        <button class="primary" id="check">Controleer</button>
+        <button id="new">Nieuwe opgave</button>
+        <button id="sol">Toon oplossing</button>
+      </div>
+    </div>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tFb" checked> Directe feedback</label>
+      <label class="tg"><input type="checkbox" id="tShape" checked> Vorm van de basen tonen</label>
+      <label class="tg"><input type="checkbox" id="tEnds" checked> 5'- en 3'-uiteinden tonen</label>
+      <label class="tg"><input type="checkbox" id="tNames"> Volledige namen tonen</label>
+      <label class="tg"><input type="checkbox" id="tCount"> Tellingen tonen</label>
+      <label class="tg"><input type="checkbox" id="tSeq"> Basenvolgorde tonen</label>
+    </div>
+    <div id="countwrap" hidden>
+      <h2>Tellingen</h2>
+      <div class="counts">
+        <div><small>A</small><b id="cA">0</b></div><div><small>T</small><b id="cT">0</b></div>
+        <div><small>C</small><b id="cC">0</b></div><div><small>G</small><b id="cG">0</b></div>
+        <div><small>H-bruggen</small><b id="cH">0</b></div>
+      </div>
+    </div>
+    <div id="seqwrap" hidden>
+      <h2>Basenvolgorde</h2>
+      <div class="seq" id="seq"></div>
+    </div>
+    <div>
+      <h2>Legende</h2>
+      <div class="legend">
+        <span><svg width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="8" fill="#f2a541" stroke="#8a5a12"/></svg>fosfaatgroep</span>
+        <span><svg width="18" height="18" aria-hidden="true"><path d="M9 1 17 7 14 17H4L1 7Z" fill="#c9b8e8" stroke="#5b4a87"/></svg>desoxyribose (suiker)</span>
+        <span><svg width="22" height="12" aria-hidden="true"><rect x="1" y="1" width="20" height="10" rx="2" fill="#bbb" stroke="#555"/></svg>stikstofbase</span>
+        <span><svg width="22" height="12" aria-hidden="true"><line x1="1" x2="21" y1="6" y2="6" stroke="#15171a" stroke-width="2.5" stroke-dasharray="3 3"/></svg>waterstofbrug</span>
+      </div>
+      <p class="hint">Purines (A en G) zijn groter dan pyrimidines (T en C).</p>
+    </div>
+  </section>
+</div>
+<script>
+{
+const B={
+ A:{n:"adenine",c:"#e4572e",t:"#fff",pur:true,k:2,p:"T"},
+ T:{n:"thymine",c:"#f3c623",t:"#15171a",pur:false,k:2,p:"A"},
+ C:{n:"cytosine",c:"#2e86de",t:"#fff",pur:false,k:3,p:"G"},
+ G:{n:"guanine",c:"#27ae60",t:"#fff",pur:true,k:3,p:"C"}
+};
+const MODES={
+ vrij:{t:"Vrij bouwen",d:"Kies links en rechts een base. Welke basen passen bij elkaar, en met hoeveel waterstofbruggen?"},
+ aanvul:{t:"Streng aanvullen",d:"Vul de ontbrekende basen aan, zodat elk basepaar complementair is."},
+ brug:{t:"Waterstofbruggen",d:"Klik tussen twee basen en kies het juiste aantal waterstofbruggen."}
+};
+const XL=150,XR=450,PUR=160,PYR=110,RH=60,TOP=70; // svg-geometrie
+let mode="vrij",N=8,rows=[],sel=null,checked=false,solved=false;
+const $=id=>document.getElementById(id);
+const rndB=()=>"ATCG"[Math.floor(Math.random()*4)];
+const comp=(l,r)=>l&&r&&B[l].p==r;
+const bonds=(l,r)=>comp(l,r)?B[l].k:0;
+
+function newTask(){
+  checked=false;solved=false;sel=null;rows=[];
+  for(let i=0;i<N;i++){
+    const l=rndB(),r=B[l].p,row={L:null,R:null,gL:false,gR:false,hb:null,sL:l,sR:r};
+    if(mode=="aanvul"){const left=$("tMix").checked?Math.random()<.5:true;if(left){row.L=l;row.gL=true}else{row.R=r;row.gR=true}}
+    if(mode=="brug"){row.L=l;row.R=r;row.gL=row.gR=true;row.hb=0}
+    rows.push(row);
+  }
+  if(mode!="brug")sel=firstEmpty();
+  render();
+}
+function firstEmpty(from={i:-1,s:"R"}){
+  const order=[];rows.forEach((r,i)=>{["L","R"].forEach(s=>order.push({i,s}))});
+  const start=order.findIndex(o=>o.i==from.i&&o.s==from.s)+1;
+  for(let j=0;j<order.length;j++){const o=order[(start+j)%order.length],r=rows[o.i];if(!r["g"+o.s]&&!r[o.s])return o}
+  return null;
+}
+// ---------- tekenen ----------
+function basePath(b,side,cy,shape){
+  const len=B[b].pur?PUR:PYR,dir=side=="L"?1:-1,x0=side=="L"?XL:XR,x1=x0+dir*len,top=cy-18,bot=cy+18;
+  let d=`M${x0} ${top} L${x1} ${top}`;
+  if(shape){const k=B[b].k,out=!B[b].pur,bulgeRight=(dir>0)==out;
+    for(let i=0;i<k;i++){const yi=cy+(i-(k-1)/2)*11;d+=` L${x1} ${yi-5} A5 5 0 0 ${bulgeRight?1:0} ${x1} ${yi+5}`}}
+  return d+` L${x1} ${bot} L${x0} ${bot}Z`;
+}
+const edge=(b,side)=>side=="L"?XL+(B[b].pur?PUR:PYR):XR-(B[b].pur?PUR:PYR);
+function rowOk(r){return mode=="brug"?r.hb==B[r.L].k:comp(r.L,r.R)}
+function render(){
+  const H=TOP+N*RH+40,svg=$("svg"),shape=$("tShape").checked,names=$("tNames").checked,fb=$("tFb").checked;
+  svg.setAttribute("viewBox",`0 0 600 ${H}`);
+  let o=`<defs><linearGradient id="sh" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".08"/></linearGradient></defs>`;
+  const y0=TOP+RH/2,yN=TOP+(N-.5)*RH;
+  // ruggengraat
+  o+=`<line x1="105" x2="105" y1="${y0-30}" y2="${yN+30}" stroke="#5b4a87" stroke-width="4"/><line x1="495" x2="495" y1="${y0-30}" y2="${yN+30}" stroke="#5b4a87" stroke-width="4"/>`;
+  for(let i=0;i<=N;i++){const y=TOP+i*RH;
+    o+=`<circle cx="105" cy="${y}" r="11" fill="#f2a541" stroke="#8a5a12" stroke-width="1.5"/><text x="105" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#4a2f05">P</text>`;
+    o+=`<circle cx="495" cy="${y}" r="11" fill="#f2a541" stroke="#8a5a12" stroke-width="1.5"/><text x="495" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#4a2f05">P</text>`;}
+  if($("tEnds").checked){
+    o+=`<text x="105" y="${TOP-20}" text-anchor="middle" font-size="20" font-weight="700" fill="#15171a">5'</text><text x="105" y="${TOP+N*RH+36}" text-anchor="middle" font-size="20" font-weight="700" fill="#15171a">3'</text>`;
+    o+=`<text x="495" y="${TOP-20}" text-anchor="middle" font-size="20" font-weight="700" fill="#15171a">3'</text><text x="495" y="${TOP+N*RH+36}" text-anchor="middle" font-size="20" font-weight="700" fill="#15171a">5'</text>`;}
+  rows.forEach((r,i)=>{
+    const cy=TOP+(i+.5)*RH,both=r.L&&r.R;
+    // suikers (rechts omgekeerd: antiparallel)
+    o+=`<path d="M127 ${cy-17} L145 ${cy-4} L138 ${cy+16} L116 ${cy+16} L109 ${cy-4}Z" fill="#c9b8e8" stroke="#5b4a87" stroke-width="1.5"/><line x1="109" x2="105" y1="${cy}" y2="${cy}" stroke="#5b4a87" stroke-width="3"/>`;
+    o+=`<path d="M473 ${cy+17} L491 ${cy+4} L484 ${cy-16} L462 ${cy-16} L455 ${cy+4}Z" fill="#c9b8e8" stroke="#5b4a87" stroke-width="1.5"/><line x1="491" x2="495" y1="${cy}" y2="${cy}" stroke="#5b4a87" stroke-width="3"/>`;
+    const showMark=(checked||(fb&&(mode!="brug")&&both))&&both;
+    const ok=both&&rowOk(r);
+    // waterstofbruggen
+    let nb=0;
+    if(mode=="brug")nb=r.hb;else if(both&&(fb||checked||solved))nb=bonds(r.L,r.R);
+    if(both&&nb){const xa=edge(r.L,"L"),xb=edge(r.R,"R");
+      for(let j=0;j<nb;j++){const yj=cy+(j-(nb-1)/2)*11;o+=`<line x1="${xa+(shape&&!B[r.L].pur?5:0)}" x2="${xb-(shape&&!B[r.R].pur?5:0)}" y1="${yj}" y2="${yj}" stroke="#15171a" stroke-width="2.5" stroke-dasharray="3 3"/>`}}
+    // basen of lege plaatsen
+    ["L","R"].forEach(s=>{
+      const b=r[s],isSel=sel&&sel.i==i&&sel.s==s,click=!r["g"+s]&&mode!="brug";
+      const bad=showMark&&!ok;
+      if(b){
+        const len=B[b].pur?PUR:PYR,xc=s=="L"?XL+len/2:XR-len/2;
+        o+=`<g ${click?`data-slot="${i},${s}"`:""}><path d="${basePath(b,s,cy,shape)}" fill="${B[b].c}" stroke="${bad?"#e4002b":"#2b2f33"}" stroke-width="${bad?3:1.5}"/><path d="${basePath(b,s,cy,shape)}" fill="url(#sh)"/>
+          <text x="${xc}" y="${cy+(names?-1:7)}" text-anchor="middle" font-size="${names?17:21}" font-weight="700" fill="${B[b].t}">${b}</text>
+          ${names?`<text x="${xc}" y="${cy+13}" text-anchor="middle" font-size="11" fill="${B[b].t}">${B[b].n}</text>`:""}
+</g>`;
+      }else{
+        const x=s=="L"?XL:XR-140;
+        o+=`<g data-slot="${i},${s}"><rect x="${x}" y="${cy-18}" width="140" height="36" rx="6" fill="rgba(255,255,255,.6)" stroke="#5d636b" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${x+70}" y="${cy+7}" text-anchor="middle" font-size="20" font-weight="700" fill="#5d636b">?</text></g>`;
+      }
+      if(isSel){const len=b?(B[b].pur?PUR:PYR):140,x=s=="L"?XL-4:XR-len-4;o+=`<rect x="${x}" y="${cy-23}" width="${len+8}" height="46" rx="8" fill="none" stroke="#e4002b" stroke-width="3.5" pointer-events="none"/>`}
+    });
+    // klikzone voor waterstofbruggen
+    if(mode=="brug"){const xa=edge(r.L,"L"),xb=edge(r.R,"R");
+      o+=`<rect data-gap="${i}" x="${xa-14}" y="${cy-22}" width="${xb-xa+28}" height="44" rx="6" fill="rgba(255,255,255,.01)" stroke="${r.hb?"none":"#5d636b"}" stroke-dasharray="4 3"/>`;}
+    // controle-teken
+    if(showMark||(mode=="brug"&&(checked||fb&&r.hb>0))){const good=rowOk(r);
+      o+=`<text x="560" y="${cy+9}" text-anchor="middle" font-size="26" font-weight="700" fill="${good?"#1a9a5b":"#e4002b"}">${good?"✓":"✗"}</text>`;
+      if(!good&&mode!="brug"&&both&&B[r.L].pur==B[r.R].pur)o+=`<text x="300" y="${cy+34}" text-anchor="middle" font-size="11" font-weight="700" fill="#e4002b">${B[r.L].pur?"twee purines: te breed":"twee pyrimidines: te smal"}</text>`;}
+  });
+  svg.innerHTML=o;
+  status();
+}
+function status(){
+  const filled=rows.filter(r=>r.L&&r.R).length;
+  let label,val,good=false;
+  if(mode=="brug"){const ok=rows.filter(rowOk).length;
+    if(checked||$("tFb").checked){label="Juist";val=ok+" / "+N;good=ok==N}else{label="Ingesteld";val=rows.filter(r=>r.hb>0).length+" / "+N}}
+  else if(checked||($("tFb").checked&&filled)){const ok=rows.filter(r=>r.L&&r.R&&comp(r.L,r.R)).length;label="Juiste baseparen";val=ok+" / "+N;good=ok==N}
+  else{label="Ingevuld";val=filled+" / "+N}
+  $("slabel").textContent=label;$("sval").textContent=val;$("scorebox").classList.toggle("good",good);
+  // tellingen
+  const cnt={A:0,T:0,C:0,G:0};rows.forEach(r=>{if(r.L)cnt[r.L]++;if(r.R)cnt[r.R]++});
+  "ATCG".split("").forEach(b=>$("c"+b).textContent=cnt[b]);
+  $("cH").textContent=rows.reduce((a,r)=>a+(mode=="brug"?r.hb:(r.L&&r.R?bonds(r.L,r.R):0)),0);
+  $("countwrap").hidden=!$("tCount").checked;
+  const s1=rows.map(r=>r.L||"_").join(""),s2=rows.map(r=>r.R||"_").join("");
+  $("seq").innerHTML=`5'-${s1}-3'<br>3'-${s2}-5'`;
+  $("seqwrap").hidden=!$("tSeq").checked;
+}
+function setMode(m){
+  mode=m;document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode==m));
+  $("mtitle").textContent=MODES[m].t;$("mtext").textContent=MODES[m].d;
+  $("traywrap").hidden=m=="brug";$("brughint").hidden=m!="brug";$("mixwrap").hidden=m!="aanvul";
+  $("tFb").checked=m=="vrij";
+  $("new").textContent=m=="vrij"?"Alles wissen":"Nieuwe opgave";$("sol").hidden=m=="vrij";$("check").hidden=m=="vrij";
+  newTask();
+}
+function place(b){
+  if(!sel||mode=="brug")return;const r=rows[sel.i];if(r["g"+sel.s])return;
+  r[sel.s]=b;checked=false;solved=false;
+  const nx=b?firstEmpty(sel):null;if(b&&nx)sel=nx;
+  render();
+}
+// ---------- bediening ----------
+$("tray").innerHTML="ATCG".split("").map(b=>{
+  const d=basePath(b,"L",20,true);
+  return `<button class="base" data-base="${b}" aria-label="${B[b].n}"><svg viewBox="${XL-4} 0 ${PUR+16} 40" aria-hidden="true"><path d="${d}" fill="${B[b].c}" stroke="#2b2f33" stroke-width="2"/></svg><b>${b}</b><small>${B[b].n}</small></button>`}).join("");
+document.addEventListener("click",e=>{
+  const t=e.target;
+  const md=t.closest("[data-mode]");if(md){setMode(md.dataset.mode);return}
+  const nb=t.closest("[data-n]");if(nb){N=+nb.dataset.n;document.querySelectorAll("[data-n]").forEach(b=>b.setAttribute("aria-pressed",b==nb));newTask();return}
+  const bs=t.closest("[data-base]");if(bs){place(bs.dataset.base);return}
+  const sl=t.closest("[data-slot]");if(sl){const [i,s]=sl.dataset.slot.split(",");sel={i:+i,s};render();return}
+  const gp=t.closest("[data-gap]");if(gp){sel={i:+gp.dataset.gap,s:null};const r=rows[+gp.dataset.gap];r.hb=(r.hb+1)%4;checked=false;solved=false;render();return}
+});
+$("erase").onclick=()=>place(null);
+$("check").onclick=()=>{checked=true;render()};
+$("new").onclick=()=>newTask();
+$("sol").onclick=()=>{rows.forEach(r=>{r.L=r.sL;r.R=r.sR;if(mode=="brug")r.hb=B[r.sL].k});solved=true;checked=true;sel=null;render()};
+$("tMix").onchange=()=>newTask();
+["tFb","tShape","tEnds","tNames","tCount","tSeq"].forEach(id=>$(id).onchange=render);
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key.toUpperCase();
+  if("ATCG".includes(k)&&k.length==1){place(k);e.preventDefault()}
+  else if(e.key=="Delete"||e.key=="Backspace"){place(null);e.preventDefault()}
+  else if(mode=="brug"&&/^[0-3]$/.test(e.key)&&sel){rows[sel.i].hb=+e.key;render()}
+});
+setMode("vrij");
+}
+</script>
+</body>
+</html>
