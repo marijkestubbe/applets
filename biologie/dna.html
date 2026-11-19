@@ -82,7 +82,7 @@ label.tg input{width:22px;height:22px;accent-color:var(--red)}
       <h2>Kies een base</h2>
       <div class="tray" id="tray"></div>
       <div class="row" style="margin-top:8px"><button id="erase">Base wissen</button></div>
-      <p class="hint">Klik eerst op een lege plaats in de ladder, daarna op een base. Met het toetsenbord kan het ook: A, T, C of G, en Delete om te wissen.</p>
+      <p class="hint">Klik eerst op een lege plaats in de ladder, daarna op een base. Met het toetsenbord kan het ook: A, T, C of G. "Base wissen" (of Delete) wist de base in het rode kader, of anders de laatst geplaatste base.</p>
     </div>
     <p class="hint" id="brughint" hidden>Klik tussen twee basen. Elke klik voegt een waterstofbrug toe: 0, 1, 2, 3 en dan weer 0.</p>
     <div>
@@ -144,14 +144,14 @@ const MODES={
  brug:{t:"Waterstofbruggen",d:"Klik tussen twee basen en kies het juiste aantal waterstofbruggen."}
 };
 const XL=150,XR=450,PUR=160,PYR=110,RH=60,TOP=70; // svg-geometrie
-let mode="vrij",N=8,rows=[],sel=null,checked=false,solved=false;
+let hist=[],mode="vrij",N=8,rows=[],sel=null,checked=false,solved=false;
 const $=id=>document.getElementById(id);
 const rndB=()=>"ATCG"[Math.floor(Math.random()*4)];
 const comp=(l,r)=>l&&r&&B[l].p==r;
 const bonds=(l,r)=>comp(l,r)?B[l].k:0;
 
 function newTask(){
-  checked=false;solved=false;sel=null;rows=[];
+  checked=false;solved=false;sel=null;rows=[];hist=[];
   for(let i=0;i<N;i++){
     const l=rndB(),r=B[l].p,row={L:null,R:null,gL:false,gR:false,hb:null,sL:l,sR:r};
     if(mode=="aanvul"){const left=$("tMix").checked?Math.random()<.5:true;if(left){row.L=l;row.gL=true}else{row.R=r;row.gR=true}}
@@ -257,9 +257,18 @@ function setMode(m){
 }
 function place(b){
   if(!sel||mode=="brug")return;const r=rows[sel.i];if(r["g"+sel.s])return;
-  r[sel.s]=b;checked=false;solved=false;
-  const nx=b?firstEmpty(sel):null;if(b&&nx)sel=nx;
+  r[sel.s]=b;checked=false;solved=false;hist.push({...sel});
+  const nx=firstEmpty(sel);if(nx)sel=nx;
   render();
+}
+// wist de geselecteerde base, of anders de laatst geplaatste
+function erase(){
+  if(mode=="brug")return;
+  const filled=o=>o&&rows[o.i]&&rows[o.i][o.s]&&!rows[o.i]["g"+o.s];
+  let t=filled(sel)?sel:null;
+  while(!t&&hist.length){const h=hist.pop();if(filled(h))t=h}
+  if(!t)return;
+  rows[t.i][t.s]=null;sel={i:t.i,s:t.s};checked=false;solved=false;render();
 }
 // ---------- bediening ----------
 $("tray").innerHTML="ATCG".split("").map(b=>{
@@ -273,7 +282,7 @@ document.addEventListener("click",e=>{
   const sl=t.closest("[data-slot]");if(sl){const [i,s]=sl.dataset.slot.split(",");sel={i:+i,s};render();return}
   const gp=t.closest("[data-gap]");if(gp){sel={i:+gp.dataset.gap,s:null};const r=rows[+gp.dataset.gap];r.hb=(r.hb+1)%4;checked=false;solved=false;render();return}
 });
-$("erase").onclick=()=>place(null);
+$("erase").onclick=erase;
 $("check").onclick=()=>{checked=true;render()};
 $("new").onclick=()=>newTask();
 $("sol").onclick=()=>{rows.forEach(r=>{r.L=r.sL;r.R=r.sR;if(mode=="brug")r.hb=B[r.sL].k});solved=true;checked=true;sel=null;render()};
@@ -283,7 +292,7 @@ document.addEventListener("keydown",e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key.toUpperCase();
   if("ATCG".includes(k)&&k.length==1){place(k);e.preventDefault()}
-  else if(e.key=="Delete"||e.key=="Backspace"){place(null);e.preventDefault()}
+  else if(e.key=="Delete"||e.key=="Backspace"){erase();e.preventDefault()}
   else if(mode=="brug"&&/^[0-3]$/.test(e.key)&&sel){rows[sel.i].hb=+e.key;render()}
 });
 setMode("vrij");
