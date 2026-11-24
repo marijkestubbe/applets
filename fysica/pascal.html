@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Druk en wet van Pascal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: drie proeven over druk: een metalen blok in het zand, een pascalbol en een hydraulische pers
+LAYOUT: scène links, bediening rechts; onder 760px gestapeld (zelfde opbouw als de andere applets)
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh}
+.scene{display:flex;flex-direction:column;background:linear-gradient(#eef3f6,#dde6ec);min-height:640px}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 0}
+.box{background:rgba(255,255,255,.95);color:#15171a;border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.place h1{margin:0;font-size:clamp(24px,3.2vw,36px);line-height:1.1}
+.place p{margin:4px 0 0;font-size:16px;max-width:32ch}
+.read{text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px}
+.read small{display:block;font-size:13px;color:#5d636b}
+.read .big{font-size:clamp(22px,3vw,32px);font-weight:700;white-space:nowrap}
+.read .mid{font-size:clamp(16px,2vw,21px);font-weight:700;white-space:nowrap}
+.read .ok{color:#1a9a5b}.read .no{color:#e4002b}
+.stage{position:relative;flex:1;min-height:480px}
+.stage svg{position:absolute;inset:0;width:100%;height:100%}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.row,.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chips i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px;border:1px solid rgba(0,0,0,.3)}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
+.sl label{font-weight:700}
+.sl output{font-variant-numeric:tabular-nums;color:var(--mut)}
+.sl input{grid-column:1/-1;width:100%;accent-color:var(--red);height:32px}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.formula{font-size:20px;font-weight:700;background:var(--card);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.vec{display:inline-block;position:relative;font-style:italic}
+.vec::before{content:"";position:absolute;left:1px;right:-1px;top:-1px;border-top:1.6px solid currentColor}
+.vec::after{content:"";position:absolute;right:-3px;top:-4.5px;border:3.5px solid transparent;border-left:6px solid currentColor;border-right:0}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.vast th:nth-child(2),.vast td:nth-child(2){text-align:left}
+th{font-size:14px;color:var(--mut);font-weight:700}
+.empty td{text-align:left;color:var(--mut);white-space:normal}
+.noratio .cr{display:none}
+@keyframes flow{to{stroke-dashoffset:-24}}
+.jet{animation:flow .5s linear infinite}
+@media(prefers-reduced-motion:reduce){.jet{animation:none}}
+@media(min-width:761px){.scene{position:sticky;top:0;height:100vh}}
+@media(max-width:760px){.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" aria-label="Proefopstelling">
+    <div class="hud">
+      <div class="box place"><h1 id="mtitle"></h1><p id="mtext"></p></div>
+      <div class="box read" id="read" aria-live="polite"></div>
+    </div>
+    <div class="stage"><svg id="svg" viewBox="0 0 600 700" preserveAspectRatio="xMidYMax meet" aria-hidden="true"></svg></div>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Welke proef?</h2>
+      <div class="row" id="modes">
+        <button data-mode="vast" aria-pressed="true">Druk op een vaste stof</button>
+        <button data-mode="bol" aria-pressed="false">Wet van Pascal</button>
+        <button data-mode="pers" aria-pressed="false">Hydraulische pers</button>
+      </div>
+    </div>
+
+    <!-- ===== vaste stof ===== -->
+    <div data-panel="vast">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div><h2>Materiaal van het blok (20 cm × 10 cm × 5 cm)</h2><div class="chips" id="mats"></div></div>
+        <div><h2>Op welk vlak ligt het blok?</h2><div class="chips" id="faces"></div></div>
+        <div><h2>Aantal blokken op elkaar</h2><div class="chips" id="stack"></div></div>
+        <div class="row">
+          <label class="tg"><input type="checkbox" id="vF" checked> Kracht tonen</label>
+          <label class="tg"><input type="checkbox" id="vA" checked> Oppervlakte tonen</label>
+          <label class="tg"><input type="checkbox" id="vP" checked> Druk tonen</label>
+          <label class="tg"><input type="checkbox" id="vArr"> <span>Drukkracht <b><span class="vec">F</span></b> tekenen</span></label>
+          <label class="tg"><input type="checkbox" id="vPar"> Druk op het zand tekenen</label>
+          <label class="tg"><input type="checkbox" id="vFor"> Formule tonen</label>
+        </div>
+        <div class="formula" id="vForm" hidden><span>p = F / A</span><span style="font-size:16px;font-weight:400">met F = m · g (g = 9,81 N/kg)</span></div>
+        <div>
+          <h2>Meettabel</h2>
+          <div class="row" style="margin-bottom:8px"><button id="vNote">Meting noteren</button><button id="vClear">Tabel wissen</button></div>
+          <div class="tblwrap"><table class="vast"><thead><tr><th>Materiaal</th><th>Ligging</th><th>Aantal</th><th>F (N)</th><th>A (m²)</th><th>p (Pa)</th></tr></thead><tbody id="vTb"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== pascalbol ===== -->
+    <div data-panel="bol" hidden>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="sl"><label for="bF">Kracht op de zuiger</label><output id="bFo"></output><input type="range" id="bF" min="0" max="100" step="1" value="40"></div>
+        <div><h2>Oppervlakte van de zuiger</h2><div class="chips" id="bAs"></div></div>
+        <div class="row">
+          <label class="tg"><input type="checkbox" id="bP" checked> Druk aan de manometers tonen</label>
+          <label class="tg"><input type="checkbox" id="bArr" checked> <span>Kracht <b><span class="vec">F</span></b> tekenen</span></label>
+          <label class="tg"><input type="checkbox" id="bFor"> Formule tonen</label>
+        </div>
+        <div class="formula" id="bForm" hidden><span>p = F / A</span><span style="font-size:16px;font-weight:400">De druk wordt in alle richtingen even groot doorgegeven.</span></div>
+        <p class="hint">Duw harder op de zuiger of kies een kleinere zuiger. Kijk naar de waterstralen en de drie manometers.</p>
+      </div>
+    </div>
+
+    <!-- ===== hydraulische pers ===== -->
+    <div data-panel="pers" hidden>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="sl"><label for="hF">Kracht F<sub>1</sub> op de kleine zuiger</label><output id="hFo"></output><input type="range" id="hF" min="0" max="300" step="5" value="100"></div>
+        <div><h2>Oppervlakte kleine zuiger A<sub>1</sub></h2><div class="chips" id="hA1"></div></div>
+        <div><h2>Oppervlakte grote zuiger A<sub>2</sub></h2><div class="chips" id="hA2"></div></div>
+        <div><h2>Last op de grote zuiger</h2><div class="chips" id="hM"></div></div>
+        <div class="row"><button class="primary" id="hPush">Kleine zuiger 10 cm omlaag duwen</button><button id="hReset">Terugzetten</button></div>
+        <div class="row">
+          <label class="tg"><input type="checkbox" id="hP" checked> Druk tonen</label>
+          <label class="tg"><input type="checkbox" id="hArr" checked> Krachten tekenen</label>
+          <label class="tg"><input type="checkbox" id="hS"> Verplaatsingen tonen</label>
+          <label class="tg"><input type="checkbox" id="hFor"> Formule tonen</label>
+        </div>
+        <div class="formula" id="hForm" hidden><span>p = F<sub>1</sub> / A<sub>1</sub> = F<sub>2</sub> / A<sub>2</sub></span><span>F<sub>2</sub> = F<sub>1</sub> · A<sub>2</sub> / A<sub>1</sub></span></div>
+        <p class="hint">We verwaarlozen het gewicht van de olie en de zuigers.</p>
+        <div>
+          <h2>Meettabel</h2>
+          <div class="row" style="margin-bottom:8px"><button id="hNote">Meting noteren</button><button id="hClear">Tabel wissen</button>
+            <label class="tg"><input type="checkbox" id="hR"> <span>Kolommen F<sub>2</sub>/F<sub>1</sub> en A<sub>2</sub>/A<sub>1</sub> tonen</span></label></div>
+          <div class="tblwrap"><table id="hTbl" class="noratio"><thead><tr><th>A<sub>1</sub> (cm²)</th><th>A<sub>2</sub> (cm²)</th><th>F<sub>1</sub> (N)</th><th>p (Pa)</th><th>F<sub>2</sub> (N)</th><th class="cr">F<sub>2</sub>/F<sub>1</sub></th><th class="cr">A<sub>2</sub>/A<sub>1</sub></th></tr></thead><tbody id="hTb"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+{
+const G=9.81;
+const $=id=>document.getElementById(id);
+const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
+const fmtA=a=>a.toLocaleString("nl-BE",{maximumSignificantDigits:4,useGrouping:false}); // m²
+const svg=$("svg");
+const MODES={
+ vast:{t:"Druk op een vaste stof",d:"Hoe dieper het blok in het zand zakt, hoe groter de druk."},
+ bol:{t:"Wet van Pascal",d:"Een vloeistof geeft druk in alle richtingen even groot door."},
+ pers:{t:"Hydraulische pers",d:"Met een kleine kracht op een kleine zuiger til je een zware last op."}
+};
+let mode="vast";
+function vecLabel(x,y,c,sym,sub,name,anchor="start"){ // F met vectorpijl, index en naam
+  const w=Math.max(44,name.length*7+8),x0=anchor=="end"?x-w:x;
+  return `<g transform="translate(${x0} ${y})"><rect x="-4" y="-36" width="${w+8}" height="58" rx="6" fill="#fff" fill-opacity=".9"/>
+   <line x1="1" x2="15" y1="-24" y2="-24" stroke="${c}" stroke-width="1.8"/><path d="M18 -24 l-6 -3.5 v7z" fill="${c}"/>
+   <text x="0" y="-4" font-size="21" font-weight="700" font-style="italic" fill="${c}">${sym}<tspan font-size="13" dy="5" font-style="normal">${sub}</tspan></text>
+   <text x="0" y="15" font-size="12" font-weight="700" fill="${c}">${name}</text></g>`}
+function arrowV(x,y0,y1,c,w=4){const dir=y1<y0?-1:1,head=Math.min(14,Math.abs(y1-y0));
+  return `<line x1="${x}" x2="${x}" y1="${y0}" y2="${y1-dir*head*.8}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/><path d="M${x} ${y1} l-8 ${-dir*head} h16z" fill="${c}"/>`}
+function arrowH(y,x0,x1,c){const dir=x1<x0?-1:1;return `<line x1="${x0}" x2="${x1-dir*11}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="4" stroke-linecap="round"/><path d="M${x1} ${y} l${-dir*14} -8 v16z" fill="${c}"/>`}
+function gauge(x,y,p,pmax,label,show,above=false){ // manometer met wijzer
+  const a=-120+240*Math.min(1,p/pmax),r=24,rad=a*Math.PI/180;
+  let o=`<circle cx="${x}" cy="${y}" r="${r+4}" fill="#2c3036"/><circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/>`;
+  for(let i=0;i<=8;i++){const t=(-120+30*i)*Math.PI/180;o+=`<line x1="${x+Math.sin(t)*(r-6)}" y1="${y-Math.cos(t)*(r-6)}" x2="${x+Math.sin(t)*(r-2)}" y2="${y-Math.cos(t)*(r-2)}" stroke="#15171a" stroke-width="1.4"/>`}
+  o+=`<line x1="${x}" y1="${y}" x2="${x+Math.sin(rad)*(r-5)}" y2="${y-Math.cos(rad)*(r-5)}" stroke="#e4002b" stroke-width="2.5" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="3" fill="#15171a"/>`;
+  const ly=above?y-r-14:y+r+18,by=above?y-r-48:y+r+24;
+  if(label)o+=`<text x="${x+(above?r+14:0)}" y="${above?y+5:ly}" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a">${label}</text>`;
+  if(show)o+=`<g><rect x="${x-46}" y="${by}" width="92" height="22" rx="5" fill="#fff" stroke="#15171a"/><text x="${x}" y="${by+16}" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a">${fmt(p)} Pa</text></g>`;
+  return o;
+}
+const chips=(id,items,cur,attr)=>{$(id).innerHTML=items.map((it,i)=>`<button data-${attr}="${i}" aria-pressed="${i==cur}">${it}</button>`).join("")};
+const press=(attr,cur)=>document.querySelectorAll(`[data-${attr}]`).forEach(b=>b.setAttribute("aria-pressed",+b.dataset[attr]==cur));
+
+/* ================= 1. vaste stof ================= */
+// dichtheden uit de tabel stofconstanten; blok van 20 × 10 × 5 cm = 1 dm³, dus m (kg) = ρ (·10³ kg/m³)
+const MATS=[{n:"Aluminium",r:2700,c:"#c9ced3",e:"#8d959c"},{n:"IJzer",r:7870,c:"#7d848b",e:"#4b5157"},{n:"Koper",r:8960,c:"#d08a5a",e:"#8e5430"},{n:"Lood",r:11300,c:"#8f9bab",e:"#5b6676"}];
+const FACES=[{n:"Plat",w:20,h:5,dp:10,A:200},{n:"Op de zijkant",w:20,h:10,dp:5,A:100},{n:"Rechtop",w:10,h:20,dp:5,A:50}];
+let vm=0,vf=0,vn=1,vrows=[];
+const vMass=()=>MATS[vm].r/1000*vn, vF=()=>vMass()*G, vAm=()=>FACES[vf].A/10000, vP=()=>vF()/vAm();
+chips("mats",MATS.map(m=>`<i style="background:${m.c}"></i>${m.n}`),vm,"m");
+chips("faces",FACES.map(f=>`${f.n} (A = ${f.A} cm²)`),vf,"f");
+chips("stack",["1","2","3"],0,"n");
+function drawVast(){
+  const S=11,SURF=520,cx=300,f=FACES[vf],m=MATS[vm],p=vP();
+  const sink=Math.min(70,7*Math.sqrt(p/1000)); // indrukking (niet op schaal)
+  const W=f.w*S,Hh=f.h*S,D=f.dp*S*.45,x0=cx-W/2,x1=cx+W/2,yb=SURF+sink;
+  let o=`<defs><pattern id="sand" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#e6c98f"/><circle cx="3" cy="4" r="1.2" fill="#c9a865"/><circle cx="10" cy="9" r="1" fill="#b8955a"/><circle cx="7" cy="12" r=".8" fill="#d8b878"/></pattern></defs>`;
+  // zandbak met kuil
+  o+=`<rect x="40" y="${SURF-6}" width="520" height="150" rx="6" fill="#8a6a45"/>`;
+  o+=`<path d="M50 ${SURF} L${x0-12} ${SURF} Q${x0-4} ${SURF} ${x0} ${yb} L${x1} ${yb} Q${x1+4} ${SURF} ${x1+12} ${SURF} L550 ${SURF} L550 ${SURF+136} L50 ${SURF+136}Z" fill="url(#sand)"/>`;
+  o+=`<text x="62" y="${SURF+124}" font-size="13" font-weight="700" fill="#6b5232">zand</text>`;
+  // blokken (vooraanzicht met bovenvlak en zijvlak)
+  for(let i=0;i<vn;i++){const yt=yb-(i+1)*Hh;
+    o+=`<path d="M${x0} ${yt} l${D} ${-D*.6} h${W} l${-D} ${D*.6}Z" fill="${m.c}" stroke="${m.e}" stroke-width="1.5"/>`;
+    o+=`<path d="M${x1} ${yt} l${D} ${-D*.6} v${Hh} l${-D} ${D*.6}Z" fill="${m.e}" stroke="${m.e}" stroke-width="1.5"/>`;
+    o+=`<rect x="${x0}" y="${yt}" width="${W}" height="${Hh}" fill="${m.c}" stroke="${m.e}" stroke-width="1.5"/>`;}
+  o+=`<text x="${cx}" y="${yb-Hh/2+5}" text-anchor="middle" font-size="14" font-weight="700" fill="#15171a">${m.n}</text>`;
+  // drukpijltjes onder het contactvlak
+  if($("vPar").checked){const n=Math.max(3,Math.round(W/28)),L=8+5*Math.sqrt(p/1000);
+    for(let i=0;i<n;i++){const x=x0+(i+.5)*W/n;if($("vArr").checked&&Math.abs(x-cx)<12)continue;o+=`<line x1="${x}" x2="${x}" y1="${yb+2}" y2="${yb+L-6}" stroke="#e4002b" stroke-width="2.5"/><path d="M${x} ${yb+L} l-5 -8 h10z" fill="#e4002b"/>`}}
+  // drukkracht
+  if($("vArr").checked){const L=Math.min(110-sink,30+20*Math.log10(1+vF()));o+=arrowV(cx,yb,yb+L,"#10285a",5)+`<circle cx="${cx}" cy="${yb}" r="4.5" fill="#10285a"/>`+vecLabel(cx+16,yb+L-2,"#10285a","F","","drukkracht")}
+  o+=`<text x="560" y="${SURF+160}" text-anchor="end" font-size="11" fill="#5d636b">indrukking niet op schaal</text>`;
+  svg.setAttribute("viewBox","0 0 600 700");svg.innerHTML=o;
+  let r="";
+  if($("vF").checked)r+=`<span><small>Kracht op het zand</small><span class="mid">F = ${fmt(vF(),1)} N</span></span>`;
+  if($("vA").checked)r+=`<span><small>Oppervlakte</small><span class="mid">A = ${f.A} cm² = ${fmtA(vAm())} m²</span></span>`;
+  if($("vP").checked)r+=`<span><small>Druk</small><span class="big">p = ${fmt(p)} Pa</span></span>`;
+  $("read").innerHTML=r;$("read").hidden=!r;
+  $("vForm").hidden=!$("vFor").checked;
+  press("m",vm);press("f",vf);press("n",vn-1);
+}
+function vTable(){$("vTb").innerHTML=vrows.length?vrows.map(r=>`<tr><td>${r.m}</td><td>${r.f}</td><td>${r.n}</td><td>${fmt(r.F,1)}</td><td>${fmtA(r.A)}</td><td>${fmt(r.p)}</td></tr>`).join(""):`<tr class="empty"><td colspan="6">Nog geen metingen. Kies een blok en klik op ‘Meting noteren’.</td></tr>`}
+$("vNote").onclick=()=>{vrows.push({m:MATS[vm].n,f:FACES[vf].n,n:vn,F:vF(),A:vAm(),p:vP()});vTable()};
+$("vClear").onclick=()=>{vrows=[];vTable()};
+
+/* ================= 2. pascalbol ================= */
+const BAS=[2,4,8]; // cm²
+let bA=1;
+chips("bAs",BAS.map(a=>`${a} cm²`),bA,"ba");
+const bP=()=>+$("bF").value/(BAS[bA]/10000);
+function drawBol(){
+  const F=+$("bF").value,p=bP(),A=BAS[bA],cy=360,bx=420,R=95,d=12*Math.sqrt(A);
+  const jet=p>0?Math.min(150,10+130*Math.sqrt(p/250000)):0;
+  let o="";
+  // waterstralen
+  const holes=[-150,-120,-60,-30,0,30,60,120,150].map(a=>a*Math.PI/180);
+  if(jet>0)holes.forEach(t=>{const x1=bx+Math.cos(t)*R,y1=cy+Math.sin(t)*R,x2=bx+Math.cos(t)*(R+jet),y2=cy+Math.sin(t)*(R+jet);
+    o+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#5fb0f0" stroke-width="5" stroke-linecap="round" opacity=".55"/><line class="jet" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2f7fd0" stroke-width="3" stroke-dasharray="10 14" stroke-linecap="round"/>`});
+  // spuit
+  const sx0=60,sx1=300,top=cy-d/2;
+  o+=`<rect x="${sx0}" y="${top}" width="${sx1-sx0}" height="${d}" fill="#bfe0fb" stroke="#7d8a94" stroke-width="3"/>`;
+  const pist=150;
+  o+=`<rect x="${sx0}" y="${top}" width="${pist-sx0}" height="${d}" fill="#eef3f6"/>`;
+  o+=`<rect x="${pist-10}" y="${top-2}" width="12" height="${d+4}" fill="#2c3036"/><rect x="40" y="${cy-4}" width="${pist-48}" height="8" fill="#5d6a74"/><rect x="30" y="${cy-26}" width="12" height="52" rx="3" fill="#2c3036"/>`;
+  o+=`<rect x="${sx1}" y="${cy-6}" width="${bx-R-sx1+6}" height="12" fill="#bfe0fb" stroke="#7d8a94" stroke-width="2"/>`;
+  // bol
+  o+=`<circle cx="${bx}" cy="${cy}" r="${R}" fill="#bfe0fb" stroke="#7d8a94" stroke-width="4"/><circle cx="${bx-30}" cy="${cy-35}" r="20" fill="#fff" opacity=".45"/>`;
+  holes.forEach(t=>o+=`<circle cx="${bx+Math.cos(t)*R}" cy="${cy+Math.sin(t)*R}" r="3.5" fill="#2c3036"/>`);
+  o+=`<text x="${(sx0+sx1)/2+40}" y="${top-10}" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a">zuiger: A = ${A} cm²</text>`;
+  // manometers
+  const show=$("bP").checked,pm=500000;
+  o+=gauge(220,cy+120,p,pm,"1",show)+`<line x1="220" y1="${cy+d/2}" x2="220" y2="${cy+92}" stroke="#7d8a94" stroke-width="5"/>`;
+  o+=`<line x1="${bx}" y1="${cy+R}" x2="${bx}" y2="${cy+R+38}" stroke="#7d8a94" stroke-width="5"/>`+gauge(bx,cy+R+64,p,pm,"2",show);
+  o+=`<line x1="${bx}" y1="${cy-R}" x2="${bx}" y2="${cy-R-26}" stroke="#7d8a94" stroke-width="5"/>`+gauge(bx,cy-R-54,p,pm,"3",show,true);
+  if($("bArr").checked&&F>0){const L=16+F*.9;o+=arrowH(cy,28-L,28,"#10285a")+vecLabel(28-L,cy-34,"#10285a","F","","kracht")}
+  svg.setAttribute("viewBox","-90 0 780 700");svg.innerHTML=o;
+  $("bFo").textContent=F+" N";
+  $("read").innerHTML=`<span><small>Kracht op de zuiger</small><span class="mid">F = ${F} N</span></span><span><small>Druk in de vloeistof</small><span class="big">p = ${fmt(p)} Pa</span></span>`;$("read").hidden=false;
+  $("bForm").hidden=!$("bFor").checked;press("ba",bA);
+}
+
+/* ================= 3. hydraulische pers ================= */
+const A1S=[2,5,10],A2S=[50,100,200,500],MS=[{n:"Kist",m:100},{n:"Motor",m:500},{n:"Auto",m:1000}];
+let h1=0,h2=2,hm=2,s1=0,s1t=0,hrows=[],hmsg="";
+chips("hA1",A1S.map(a=>`${a} cm²`),h1,"a1");chips("hA2",A2S.map(a=>`${a} cm²`),h2,"a2");chips("hM",MS.map(x=>`${x.n} (${x.m} kg)`),hm,"lm");
+const hF1=()=>+$("hF").value,hp=()=>hF1()/(A1S[h1]/10000),hF2=()=>hp()*A2S[h2]/10000,hFz=()=>MS[hm].m*G;
+const alen=F=>F>0?28+30*Math.log10(1+F/10):0; // pijllengte (niet op schaal)
+function drawPers(){
+  const A1=A1S[h1],A2=A2S[h2],k=10.7,d1=k*Math.sqrt(A1),d2=k*Math.sqrt(A2),c1=95,c2=370,BOT=600,Y0=330,SC=6; // 6 eenheden per cm
+  const s2=s1*A1/A2,y1=Y0+s1*SC,y2=Y0-s2*SC,p=hp(),F1=hF1(),F2=hF2(),Fz=hFz();
+  let o=`<rect x="-20" y="${BOT+60}" width="720" height="60" fill="#c9cfd4"/>`;
+  const oil="#f2c94c";
+  // vat: twee cilinders verbonden onderaan
+  o+=`<rect x="${c1-d1/2}" y="${y1}" width="${d1}" height="${BOT-y1}" fill="${oil}"/><rect x="${c2-d2/2}" y="${y2}" width="${d2}" height="${BOT-y2}" fill="${oil}"/>`;
+  o+=`<rect x="${c1-d1/2}" y="${BOT-10}" width="${c2-c1+d1/2-d2/2+4}" height="50" fill="${oil}"/>`;
+  o+=`<path d="M${c1-d1/2} 200 V${BOT+40} H${c2+d2/2} V200 M${c1+d1/2} 200 V${BOT-10} H${c2-d2/2} V200" fill="none" stroke="#5d6a74" stroke-width="5" stroke-linejoin="round"/>`;
+  o+=`<text x="${(c1+c2)/2}" y="${BOT+28}" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5212">olie</text>`;
+  // kleine zuiger met stang
+  o+=`<rect x="${c1-d1/2+2}" y="${y1-10}" width="${d1-4}" height="10" fill="#2c3036"/><rect x="${c1-3}" y="${y1-110}" width="6" height="100" fill="#5d6a74"/><rect x="${c1-24}" y="${y1-118}" width="48" height="10" rx="3" fill="#2c3036"/>`;
+  // grote zuiger met plateau en last
+  o+=`<rect x="${c2-d2/2+2}" y="${y2-14}" width="${d2-4}" height="14" fill="#2c3036"/>`;
+  const L=MS[hm],lw=[60,110,170][hm],lh=[50,60,70][hm],ly=y2-14-lh;
+  if(hm==2){o+=`<path d="M${c2-lw/2} ${y2-30} h${lw} v-22 l-30 -6 l-22 -22 h-60 l-26 24 l-32 4z" fill="#d1495b" stroke="#7a1f2b" stroke-width="2"/><circle cx="${c2-lw/2+35}" cy="${y2-26}" r="12" fill="#2c3036"/><circle cx="${c2+lw/2-35}" cy="${y2-26}" r="12" fill="#2c3036"/><path d="M${c2-30} ${y2-74} h46 l18 18 h-80z" fill="#cfe8f7"/>`}
+  else o+=`<rect x="${c2-lw/2}" y="${ly}" width="${lw}" height="${lh}" rx="4" fill="${hm==0?"#b07d4b":"#6b7680"}" stroke="#3b2a18" stroke-width="2"/>`;
+  o+=`<text x="${c2}" y="${y2-14-lh-30}" text-anchor="middle" font-size="14" font-weight="700" fill="#15171a">${L.n}: ${L.m} kg</text>`;
+  o+=`<text x="${c1}" y="${BOT+58}" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">A₁ = ${A1} cm²</text><text x="${c2}" y="${BOT+58}" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">A₂ = ${A2} cm²</text>`;
+  // manometers
+  const show=$("hP").checked;
+  o+=gauge(c1+70,BOT-150,p,1500000,"",false)+`<line x1="${c1+d1/2}" y1="${BOT-110}" x2="${c1+70}" y2="${BOT-110}" stroke="#7d8a94" stroke-width="5"/><line x1="${c1+70}" y1="${BOT-110}" x2="${c1+70}" y2="${BOT-122}" stroke="#7d8a94" stroke-width="5"/>`;
+  o+=gauge(255,BOT+90-60,p,1500000,"",false);
+  if(show){o+=`<rect x="${c1+70-46}" y="${BOT-210}" width="92" height="22" rx="5" fill="#fff" stroke="#15171a"/><text x="${c1+70}" y="${BOT-194}" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a">${fmt(p)} Pa</text>`;
+    o+=`<rect x="${255-46}" y="${BOT+64}" width="92" height="22" rx="5" fill="#fff" stroke="#15171a"/><text x="255" y="${BOT+80}" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a">${fmt(p)} Pa</text>`;}
+  // krachten (pijlen niet op schaal)
+  if($("hArr").checked){
+    if(F1>0){const l=alen(F1);o+=arrowV(c1,y1-118-l,y1-118,"#10285a")+vecLabel(c1+14,y1-118-l+20,"#10285a","F","1","kracht")}
+    if(F2>0){const l=alen(F2),xs=c2-d2/4;o+=arrowV(xs,y2+l,y2,"#c2187a")+vecLabel(xs+12,y2+l-6,"#c2187a","F","2","kracht van de olie")}
+    const l=alen(Fz),xz=c2+d2/2+26;o+=arrowV(xz,y2-40,y2-40+l,"#1a6b3c")+vecLabel(xz+12,y2-40+l-4,"#1a6b3c","F","z","zwaartekracht last");
+    o+=`<text x="670" y="${BOT+112}" text-anchor="end" font-size="11" fill="#5d6a74">krachtpijlen niet op schaal</text>`;}
+  if($("hS").checked&&s1>0){
+    o+=`<g font-size="13" font-weight="700" fill="#15171a"><line x1="${c1-d1/2-14}" x2="${c1-d1/2-14}" y1="${Y0}" y2="${y1}" stroke="#15171a" stroke-width="1.6"/><line x1="${c1-d1/2-20}" x2="${c1-d1/2-8}" y1="${Y0}" y2="${Y0}" stroke="#15171a" stroke-width="1.6"/>
+      <text x="${c1-d1/2-18}" y="${(Y0+y1)/2+4}" text-anchor="end">s₁ = ${fmt(s1,1)} cm</text>
+      <text x="${c2+d2/2+10}" y="${y2-60}" text-anchor="start">s₂ = ${fmt(s2,2)} cm</text></g>`;}
+  svg.setAttribute("viewBox","0 120 680 640");svg.innerHTML=o;
+  $("hFo").textContent=F1+" N";
+  const ok=F2>=Fz;
+  $("read").innerHTML=`<span><small>Druk in de olie</small><span class="big">p = ${fmt(p)} Pa</span></span><span><small>Kracht van de olie op de grote zuiger</small><span class="mid">F₂ = ${fmt(F2)} N</span></span><span><small>Zwaartekracht op de last</small><span class="mid">F<sub>z</sub> = ${fmt(Fz)} N</span></span><span class="mid ${ok?"ok":"no"}">${ok?"De last kan omhoog":"Te weinig kracht"}</span>${hmsg?`<small>${hmsg}</small>`:""}`;$("read").hidden=false;
+  $("hForm").hidden=!$("hFor").checked;press("a1",h1);press("a2",h2);press("lm",hm);
+}
+function hTable(){$("hTb").innerHTML=hrows.length?hrows.map(r=>`<tr><td>${r.a1}</td><td>${r.a2}</td><td>${r.f1}</td><td>${fmt(r.p)}</td><td>${fmt(r.f2)}</td><td class="cr">${r.f1?fmt(r.f2/r.f1):"–"}</td><td class="cr">${fmt(r.a2/r.a1)}</td></tr>`).join(""):`<tr class="empty"><td colspan="7">Nog geen metingen. Kies een kracht en klik op ‘Meting noteren’.</td></tr>`}
+$("hNote").onclick=()=>{hrows.push({a1:A1S[h1],a2:A2S[h2],f1:hF1(),p:hp(),f2:hF2()});hTable()};
+$("hClear").onclick=()=>{hrows=[];hTable()};
+$("hR").onchange=()=>$("hTbl").classList.toggle("noratio",!$("hR").checked);
+const resetPers=()=>{s1=0;s1t=0;hmsg=""};
+$("hPush").onclick=()=>{if(hF2()>=hFz()){s1t=Math.min(20,s1t+10);hmsg=""}else hmsg="De zuigers bewegen niet: F₂ is kleiner dan Fz.";draw()};
+$("hReset").onclick=()=>{resetPers();draw()};
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function anim(){if(Math.abs(s1t-s1)>.01){s1=reduce?s1t:s1+(s1t-s1)*.08;if(Math.abs(s1t-s1)<.02)s1=s1t;if(mode=="pers")drawPers()}requestAnimationFrame(anim)}
+
+/* ================= algemeen ================= */
+function draw(){({vast:drawVast,bol:drawBol,pers:drawPers})[mode]()}
+function setMode(m){mode=m;document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode==m));
+  document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!=m);
+  $("mtitle").textContent=MODES[m].t;$("mtext").textContent=MODES[m].d;draw()}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;const d=t.dataset;
+  if(d.mode){setMode(d.mode);return}
+  if(d.m!=null)vm=+d.m;else if(d.f!=null)vf=+d.f;else if(d.n!=null)vn=+d.n+1;
+  else if(d.ba!=null)bA=+d.ba;
+  else if(d.a1!=null){h1=+d.a1;resetPers()}else if(d.a2!=null){h2=+d.a2;resetPers()}else if(d.lm!=null){hm=+d.lm;resetPers()}
+  else return;draw()});
+document.querySelectorAll(".panel input").forEach(i=>i.addEventListener("input",()=>{if(i.id=="hF")resetPers();if(i.id!="hR")draw()}));
+vTable();hTable();setMode("vast");requestAnimationFrame(anim);
+}
+</script>
+</body>
+</html>
