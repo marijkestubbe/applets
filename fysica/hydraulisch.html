@@ -81,11 +81,11 @@ th{font-size:14px;color:var(--mut);font-weight:700}
     <!-- ===== hydraulische pers ===== -->
     <div data-panel="pers">
       <div style="display:flex;flex-direction:column;gap:18px">
-        <div class="sl"><label for="hF">Kracht F<sub>1</sub> op de kleine zuiger</label><output id="hFo"></output><input type="range" id="hF" min="0" max="300" step="5" value="0"></div>
+        <div class="sl"><label for="hS1">Kleine zuiger omlaag duwen (s<sub>1</sub>)</label><output id="hS1o"></output><input type="range" id="hS1" min="0" max="20" step="0.1" value="0"></div>
         <div><h2>Oppervlakte kleine zuiger A<sub>1</sub></h2><div class="chips" id="hA1"></div></div>
         <div><h2>Oppervlakte grote zuiger A<sub>2</sub></h2><div class="chips" id="hA2"></div></div>
         <div><h2>Last op de grote zuiger</h2><div class="chips" id="hM"></div></div>
-        <p class="hint" style="margin:0">Sleep het handvat van de kleine zuiger omlaag om harder te duwen (omhoog: minder hard). Is F<sub>2</sub> groter dan de zwaartekracht op de last, dan gaat de last omhoog.</p>
+        <p class="hint" style="margin:0">Sleep het handvat van de kleine zuiger omlaag en weer omhoog: de grote zuiger met de last beweegt mee. Kijk hoe groot de kracht F<sub>1</sub> moet zijn om de last te dragen.</p>
         <div class="row"><button id="hReset">Zuigers terugzetten</button></div>
         <div class="row">
           <label class="tg"><input type="checkbox" id="hP" checked> Druk tonen</label>
@@ -94,13 +94,13 @@ th{font-size:14px;color:var(--mut);font-weight:700}
           <label class="tg"><input type="checkbox" id="hMag" checked> Beweging grote zuiger vergroot tekenen</label>
           <label class="tg"><input type="checkbox" id="hFor"> Formule tonen</label>
         </div>
-        <div class="formula" id="hForm" hidden><span>p = F<sub>1</sub> / A<sub>1</sub> = F<sub>2</sub> / A<sub>2</sub></span><span>F<sub>2</sub> = F<sub>1</sub> · A<sub>2</sub> / A<sub>1</sub></span></div>
+        <div class="formula" id="hForm" hidden><span>p = F<sub>1</sub> / A<sub>1</sub> = F<sub>2</sub> / A<sub>2</sub></span><span>F<sub>1</sub> = F<sub>2</sub> · A<sub>1</sub> / A<sub>2</sub></span><span>s<sub>2</sub> = s<sub>1</sub> · A<sub>1</sub> / A<sub>2</sub></span></div>
         <p class="hint">We verwaarlozen het gewicht van de olie en de zuigers.</p>
         <div>
           <h2>Meettabel</h2>
           <div class="row" style="margin-bottom:8px"><button id="hNote">Meting noteren</button><button id="hClear">Tabel wissen</button>
-            <label class="tg"><input type="checkbox" id="hR"> <span>Kolommen F<sub>2</sub>/F<sub>1</sub> en A<sub>2</sub>/A<sub>1</sub> tonen</span></label></div>
-          <div class="tblwrap"><table id="hTbl" class="noratio"><thead><tr><th>A<sub>1</sub> (cm²)</th><th>A<sub>2</sub> (cm²)</th><th>F<sub>1</sub> (N)</th><th>p (Pa)</th><th>F<sub>2</sub> (N)</th><th class="cr">F<sub>2</sub>/F<sub>1</sub></th><th class="cr">A<sub>2</sub>/A<sub>1</sub></th></tr></thead><tbody id="hTb"></tbody></table></div>
+            <label class="tg"><input type="checkbox" id="hR"> <span>Kolommen F<sub>2</sub>/F<sub>1</sub>, A<sub>2</sub>/A<sub>1</sub> en s<sub>1</sub>/s<sub>2</sub> tonen</span></label></div>
+          <div class="tblwrap"><table id="hTbl" class="noratio"><thead><tr><th>A<sub>1</sub> (cm²)</th><th>A<sub>2</sub> (cm²)</th><th>F<sub>1</sub> (N)</th><th>p (Pa)</th><th>F<sub>2</sub> (N)</th><th>s<sub>1</sub> (cm)</th><th>s<sub>2</sub> (cm)</th><th class="cr">F<sub>2</sub>/F<sub>1</sub></th><th class="cr">A<sub>2</sub>/A<sub>1</sub></th><th class="cr">s<sub>1</sub>/s<sub>2</sub></th></tr></thead><tbody id="hTb"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -141,26 +141,30 @@ const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const A1S=[2,5,10],A2S=[50,100,200,500],MS=[{n:"Kist",m:100},{n:"Motor",m:500},{n:"Auto",m:1000}];
 let h1=0,h2=2,hm=2,s1=0,hrows=[],hmsg="";
 chips("hA1",A1S.map(a=>`${a} cm²`),h1,"a1");chips("hA2",A2S.map(a=>`${a} cm²`),h2,"a2");chips("hM",MS.map(x=>`${x.n} (${x.m} kg)`),hm,"lm");
-const hF1=()=>+$("hF").value,hp=()=>hF1()/(A1S[h1]/10000),hF2=()=>hp()*A2S[h2]/10000,hFz=()=>MS[hm].m*G;
+// rustig duwen: de last bepaalt de druk; de kracht op de kleine zuiger is wat nodig is om de last te dragen
+const hFz=()=>MS[hm].m*G,hp=()=>hFz()/(A2S[h2]/10000),hF1=()=>hp()*A1S[h1]/10000,hF2=()=>hFz();
+const SMAX=20; // cm: zo ver kan de kleine zuiger omlaag
+let flow=0,flowT=0; // stroomrichting van de olie: 1 = naar de grote cilinder, -1 = terug
 const alen=F=>F>0?28+30*Math.log10(1+F/10):0; // pijllengte (niet op schaal)
 function drawPers(){
   const A1=A1S[h1],A2=A2S[h2],k=10.7,d1=k*Math.sqrt(A1),d2=k*Math.sqrt(A2),c1=95,c2=370,BOT=600,Y0=330,SC=6; // 6 eenheden per cm
   // de grote zuiger stijgt s2 = s1·A1/A2; dat is vaak te weinig om te zien, dus vergroot tekenen (met vermelding)
-  const mag=$("hMag").checked?[1,2,5,10,20,50,100,200].find(m=>SMAX*SC*A1/A2*m>=60)||200:1;
+  const mag=$("hMag").checked?[1,2,5,10,20,50,100,200,500].find(m=>SMAX*SC*A1/A2*m>=90)||500:1;
   const s2=s1*A1/A2,y1=Y0+s1*SC,y2=Y0-s2*SC*mag,p=hp(),F1=hF1(),F2=hF2(),Fz=hFz();
   let o=`<rect x="-20" y="${BOT+60}" width="720" height="60" fill="#c9cfd4"/>`;
   const oil="#f2c94c";
   // vat: twee cilinders verbonden onderaan
   o+=`<rect x="${c1-d1/2}" y="${y1}" width="${d1}" height="${BOT-y1}" fill="${oil}"/><rect x="${c2-d2/2}" y="${y2}" width="${d2}" height="${BOT-y2}" fill="${oil}"/>`;
   o+=`<rect x="${c1-d1/2}" y="${BOT-10}" width="${c2+d2/2-c1+d1/2}" height="50" fill="${oil}"/>`;
-  if(moving){ // olie stroomt van de kleine naar de grote cilinder
-    o+=`<path class="jet" d="M${c1} ${y1+20} V${BOT+15} H${c2} V${y2+30}" fill="none" stroke="#b07a00" stroke-width="3" stroke-dasharray="10 14"/>`;
-    o+=`<path d="M${c2} ${y2+22} l-7 12 h14z" fill="#b07a00"/><path d="M${c2-d2/2-18} ${BOT+15} l-12 -7 v14z" fill="#b07a00"/>`;}
+  if(flow){ // olie stroomt naar de grote cilinder (duwen) of terug (optrekken)
+    const path=`M${c1} ${y1+20} V${BOT+15} H${c2} V${y2+30}`;
+    o+=`<path class="jet" d="${path}" fill="none" stroke="#b07a00" stroke-width="3" stroke-dasharray="10 14" style="animation-direction:${flow>0?"normal":"reverse"}"/>`;
+    const xm=(c1+c2)/2;o+=flow>0?`<path d="M${xm+8} ${BOT+15} l-14 -8 v16z" fill="#b07a00"/>`:`<path d="M${xm-8} ${BOT+15} l14 -8 v16z" fill="#b07a00"/>`;}
   o+=`<path d="M${c1-d1/2} 200 V${BOT+40} H${c2+d2/2} V200 M${c1+d1/2} 200 V${BOT-10} H${c2-d2/2} V200" fill="none" stroke="#5d6a74" stroke-width="5" stroke-linejoin="round"/>`;
   o+=`<text x="${(c1+c2)/2}" y="${BOT+28}" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5212">olie</text>`;
   // kleine zuiger met stang
   o+=`<rect x="${c1-d1/2+2}" y="${y1-10}" width="${d1-4}" height="10" fill="#2c3036"/><g data-handle style="cursor:ns-resize"><rect x="${c1-3}" y="${y1-110}" width="6" height="100" fill="#5d6a74"/><rect x="${c1-24}" y="${y1-118}" width="48" height="10" rx="3" fill="#2c3036"/><rect x="${c1-40}" y="${y1-150}" width="80" height="140" fill="transparent"/></g>
-   <text x="${c1-30}" y="${y1-104}" text-anchor="end" font-size="12" fill="#5d636b">sleep ↓</text>`;
+   <text x="${c1-30}" y="${y1-104}" text-anchor="end" font-size="12" fill="#5d636b">sleep ↕</text>`;
   // grote zuiger met plateau en last
   o+=`<rect x="${c2-d2/2+2}" y="${y2-14}" width="${d2-4}" height="14" fill="#2c3036"/>`;
   const L=MS[hm],lw=[60,110,170][hm],lh=[50,60,70][hm],ly=y2-14-lh;
@@ -176,8 +180,8 @@ function drawPers(){
     o+=`<rect x="${255-46}" y="${BOT+64}" width="92" height="22" rx="5" fill="#fff" stroke="#15171a"/><text x="255" y="${BOT+80}" text-anchor="middle" font-size="13" font-weight="700" fill="#15171a">${fmt(p)} Pa</text>`;}
   // krachten (pijlen niet op schaal)
   if($("hArr").checked){
-    if(F1>0){const l=alen(F1);o+=`<g pointer-events="none">`+arrowV(c1,y1-118-l,y1-118,"#10285a")+vecLabel(c1+14,y1-118-l+20,"#10285a","F","1","kracht")+`</g>`}
-    if(F2>0){const l=alen(F2),xs=c2-d2/4;o+=arrowV(xs,y2+l,y2,"#c2187a")+vecLabel(xs+12,y2+l-6,"#c2187a","F","2","kracht van de olie")}
+    {const l=alen(F1);o+=`<g pointer-events="none">`+arrowV(c1,y1-118-l,y1-118,"#10285a")+vecLabel(c1+14,y1-118-l+20,"#10285a","F","1","kracht")+`</g>`}
+    {const l=alen(F2),xs=c2-d2/4;o+=arrowV(xs,y2+l,y2,"#c2187a")+vecLabel(xs+12,y2+l-6,"#c2187a","F","2","kracht van de olie")}
     const l=alen(Fz),xz=c2+d2/2+26;o+=arrowV(xz,y2-40,y2-40+l,"#1a6b3c")+vecLabel(xz+12,y2-40+l-4,"#1a6b3c","F","z","zwaartekracht last");
     o+=`<text x="670" y="${BOT+112}" text-anchor="end" font-size="11" fill="#5d6a74">krachtpijlen niet op schaal</text>`;}
   if($("hS").checked&&s1>0){
@@ -185,38 +189,31 @@ function drawPers(){
       <text x="${c1-d1/2-18}" y="${(Y0+y1)/2+4}" text-anchor="end">s₁ = ${fmt(s1,1)} cm</text>
       <text x="${c2+d2/2+10}" y="${y2-60}" text-anchor="start">s₂ = ${fmt(s2,2)} cm</text></g>`;}
   if(mag>1)o+=`<text x="670" y="${BOT+94}" text-anchor="end" font-size="12" font-weight="700" fill="#e4002b">beweging grote zuiger ×${mag} vergroot getekend</text>`;
-  svg.setAttribute("viewBox","0 120 680 640");svg.innerHTML=o;
-  $("hFo").textContent=F1+" N";
-  const ok=F2>=Fz;
-  $("read").innerHTML=`<span><small>Druk in de olie</small><span class="big">p = ${fmt(p)} Pa</span></span><span><small>Kracht van de olie op de grote zuiger</small><span class="mid">F₂ = ${fmt(F2)} N</span></span><span><small>Zwaartekracht op de last</small><span class="mid">F<sub>z</sub> = ${fmt(Fz)} N</span></span><span class="mid ${ok?"ok":"no"}">${ok?"De last kan omhoog":"Te weinig kracht"}</span>${hmsg?`<small>${hmsg}</small>`:""}`;$("read").hidden=false;
+  svg.setAttribute("viewBox","0 40 680 720");svg.innerHTML=o;
+  $("hS1o").textContent=fmt(s1,1)+" cm";$("hS1").value=s1;
+  $("read").innerHTML=`<span><small>Druk in de olie</small><span class="big">p = ${fmt(p)} Pa</span></span><span><small>Kracht nodig op de kleine zuiger</small><span class="mid">F₁ = ${fmt(F1,1)} N</span></span><span><small>Kracht van de olie op de grote zuiger</small><span class="mid">F₂ = ${fmt(F2)} N</span></span><span><small>Verplaatsing</small><span class="mid">s₁ = ${fmt(s1,1)} cm · s₂ = ${fmt(s2,2)} cm</span></span>`;$("read").hidden=false;
   $("hForm").hidden=!$("hFor").checked;press("a1",h1);press("a2",h2);press("lm",hm);
 }
-function hTable(){$("hTb").innerHTML=hrows.length?hrows.map(r=>`<tr><td>${r.a1}</td><td>${r.a2}</td><td>${r.f1}</td><td>${fmt(r.p)}</td><td>${fmt(r.f2)}</td><td class="cr">${r.f1?fmt(r.f2/r.f1):"–"}</td><td class="cr">${fmt(r.a2/r.a1)}</td></tr>`).join(""):`<tr class="empty"><td colspan="7">Nog geen metingen. Kies een kracht en klik op ‘Meting noteren’.</td></tr>`}
-$("hNote").onclick=()=>{hrows.push({a1:A1S[h1],a2:A2S[h2],f1:hF1(),p:hp(),f2:hF2()});hTable()};
+function hTable(){$("hTb").innerHTML=hrows.length?hrows.map(r=>`<tr><td>${r.a1}</td><td>${r.a2}</td><td>${fmt(r.f1,1)}</td><td>${fmt(r.p)}</td><td>${fmt(r.f2)}</td><td>${fmt(r.s1,1)}</td><td>${fmt(r.s2,2)}</td><td class="cr">${fmt(r.f2/r.f1)}</td><td class="cr">${fmt(r.a2/r.a1)}</td><td class="cr">${r.s2?fmt(r.s1/r.s2):"–"}</td></tr>`).join(""):`<tr class="empty"><td colspan="10">Nog geen metingen. Duw de kleine zuiger omlaag en klik op ‘Meting noteren’.</td></tr>`}
+$("hNote").onclick=()=>{hrows.push({a1:A1S[h1],a2:A2S[h2],f1:hF1(),p:hp(),f2:hF2(),s1,s2:s1*A1S[h1]/A2S[h2]});hTable()};
 $("hClear").onclick=()=>{hrows=[];hTable()};
 $("hR").onchange=()=>$("hTbl").classList.toggle("noratio",!$("hR").checked);
-const resetPers=()=>{s1=0;hmsg=""};
+const resetPers=()=>{s1=0;flow=0};
 $("hReset").onclick=()=>{resetPers();draw()};
-const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-let moving=false;
-const SMAX=20; // cm: zo ver kan de kleine zuiger omlaag
-function anim(){ // zolang F2 ≥ Fz duwt de kleine zuiger de olie weg en stijgt de last
-  const go=hF2()>=hFz()&&hF1()>0&&s1<SMAX;
-  if(go!=moving){moving=go;drawPers()}
-  if(go){s1=reduce?SMAX:Math.min(SMAX,s1+.12);hmsg=s1>=SMAX?"De kleine zuiger is helemaal ingeduwd.":"";drawPers()}
-  requestAnimationFrame(anim)}
+// zuiger verplaatsen; de oliestroom blijft even zichtbaar na elke beweging
+function setS1(v){const n=clamp(+v,0,SMAX);if(Math.abs(n-s1)>1e-6){flow=n>s1?1:-1;clearTimeout(flowT);flowT=setTimeout(()=>{flow=0;drawPers()},350)}s1=n;drawPers()}
 
 /* ================= start ================= */
 const draw=drawPers;
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;const d=t.dataset;
   if(d.a1!=null){h1=+d.a1;resetPers()}else if(d.a2!=null){h2=+d.a2;resetPers()}else if(d.lm!=null){hm=+d.lm;resetPers()}else return;draw()});
-document.querySelectorAll(".panel input").forEach(i=>i.addEventListener("input",()=>{if(i.id!="hR")draw()}));
-// handvat van de kleine zuiger omlaag slepen = harder duwen, omhoog = minder hard
+document.querySelectorAll(".panel input").forEach(i=>i.addEventListener("input",()=>{if(i.id=="hS1")setS1(i.value);else if(i.id!="hR")draw()}));
+// handvat van de kleine zuiger slepen: de zuiger volgt de muis, omlaag én omhoog
 let drag=null;
-svg.addEventListener("pointerdown",e=>{if(!e.target.closest("[data-handle]"))return;drag={y:svgPt(e).y,F:hF1()};svg.setPointerCapture(e.pointerId);e.preventDefault()});
-svg.addEventListener("pointermove",e=>{if(!drag)return;$("hF").value=clamp(Math.round((drag.F+(svgPt(e).y-drag.y)*2)/5)*5,0,300);draw()});
+svg.addEventListener("pointerdown",e=>{if(!e.target.closest("[data-handle]"))return;drag={y:svgPt(e).y,s:s1};svg.setPointerCapture(e.pointerId);e.preventDefault()});
+svg.addEventListener("pointermove",e=>{if(!drag)return;setS1(Math.round((drag.s+(svgPt(e).y-drag.y)/6)*10)/10)});
 ["pointerup","pointercancel"].forEach(t=>svg.addEventListener(t,()=>drag=null));
-hTable();draw();requestAnimationFrame(anim);
+hTable();draw();
 }
 </script>
 </body>
