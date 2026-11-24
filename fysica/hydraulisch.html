@@ -91,6 +91,7 @@ th{font-size:14px;color:var(--mut);font-weight:700}
           <label class="tg"><input type="checkbox" id="hP" checked> Druk tonen</label>
           <label class="tg"><input type="checkbox" id="hArr" checked> Krachten tekenen</label>
           <label class="tg"><input type="checkbox" id="hS"> Verplaatsingen tonen</label>
+          <label class="tg"><input type="checkbox" id="hMag" checked> Beweging grote zuiger vergroot tekenen</label>
           <label class="tg"><input type="checkbox" id="hFor"> Formule tonen</label>
         </div>
         <div class="formula" id="hForm" hidden><span>p = F<sub>1</sub> / A<sub>1</sub> = F<sub>2</sub> / A<sub>2</sub></span><span>F<sub>2</sub> = F<sub>1</sub> · A<sub>2</sub> / A<sub>1</sub></span></div>
@@ -144,12 +145,17 @@ const hF1=()=>+$("hF").value,hp=()=>hF1()/(A1S[h1]/10000),hF2=()=>hp()*A2S[h2]/1
 const alen=F=>F>0?28+30*Math.log10(1+F/10):0; // pijllengte (niet op schaal)
 function drawPers(){
   const A1=A1S[h1],A2=A2S[h2],k=10.7,d1=k*Math.sqrt(A1),d2=k*Math.sqrt(A2),c1=95,c2=370,BOT=600,Y0=330,SC=6; // 6 eenheden per cm
-  const s2=s1*A1/A2,y1=Y0+s1*SC,y2=Y0-s2*SC,p=hp(),F1=hF1(),F2=hF2(),Fz=hFz();
+  // de grote zuiger stijgt s2 = s1·A1/A2; dat is vaak te weinig om te zien, dus vergroot tekenen (met vermelding)
+  const mag=$("hMag").checked?[1,2,5,10,20,50,100,200].find(m=>SMAX*SC*A1/A2*m>=60)||200:1;
+  const s2=s1*A1/A2,y1=Y0+s1*SC,y2=Y0-s2*SC*mag,p=hp(),F1=hF1(),F2=hF2(),Fz=hFz();
   let o=`<rect x="-20" y="${BOT+60}" width="720" height="60" fill="#c9cfd4"/>`;
   const oil="#f2c94c";
   // vat: twee cilinders verbonden onderaan
   o+=`<rect x="${c1-d1/2}" y="${y1}" width="${d1}" height="${BOT-y1}" fill="${oil}"/><rect x="${c2-d2/2}" y="${y2}" width="${d2}" height="${BOT-y2}" fill="${oil}"/>`;
-  o+=`<rect x="${c1-d1/2}" y="${BOT-10}" width="${c2-c1+d1/2-d2/2+4}" height="50" fill="${oil}"/>`;
+  o+=`<rect x="${c1-d1/2}" y="${BOT-10}" width="${c2+d2/2-c1+d1/2}" height="50" fill="${oil}"/>`;
+  if(moving){ // olie stroomt van de kleine naar de grote cilinder
+    o+=`<path class="jet" d="M${c1} ${y1+20} V${BOT+15} H${c2} V${y2+30}" fill="none" stroke="#b07a00" stroke-width="3" stroke-dasharray="10 14"/>`;
+    o+=`<path d="M${c2} ${y2+22} l-7 12 h14z" fill="#b07a00"/><path d="M${c2-d2/2-18} ${BOT+15} l-12 -7 v14z" fill="#b07a00"/>`;}
   o+=`<path d="M${c1-d1/2} 200 V${BOT+40} H${c2+d2/2} V200 M${c1+d1/2} 200 V${BOT-10} H${c2-d2/2} V200" fill="none" stroke="#5d6a74" stroke-width="5" stroke-linejoin="round"/>`;
   o+=`<text x="${(c1+c2)/2}" y="${BOT+28}" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5212">olie</text>`;
   // kleine zuiger met stang
@@ -178,6 +184,7 @@ function drawPers(){
     o+=`<g font-size="13" font-weight="700" fill="#15171a"><line x1="${c1-d1/2-14}" x2="${c1-d1/2-14}" y1="${Y0}" y2="${y1}" stroke="#15171a" stroke-width="1.6"/><line x1="${c1-d1/2-20}" x2="${c1-d1/2-8}" y1="${Y0}" y2="${Y0}" stroke="#15171a" stroke-width="1.6"/>
       <text x="${c1-d1/2-18}" y="${(Y0+y1)/2+4}" text-anchor="end">s₁ = ${fmt(s1,1)} cm</text>
       <text x="${c2+d2/2+10}" y="${y2-60}" text-anchor="start">s₂ = ${fmt(s2,2)} cm</text></g>`;}
+  if(mag>1)o+=`<text x="670" y="${BOT+94}" text-anchor="end" font-size="12" font-weight="700" fill="#e4002b">beweging grote zuiger ×${mag} vergroot getekend</text>`;
   svg.setAttribute("viewBox","0 120 680 640");svg.innerHTML=o;
   $("hFo").textContent=F1+" N";
   const ok=F2>=Fz;
@@ -191,9 +198,11 @@ $("hR").onchange=()=>$("hTbl").classList.toggle("noratio",!$("hR").checked);
 const resetPers=()=>{s1=0;hmsg=""};
 $("hReset").onclick=()=>{resetPers();draw()};
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let moving=false;
 const SMAX=20; // cm: zo ver kan de kleine zuiger omlaag
 function anim(){ // zolang F2 ≥ Fz duwt de kleine zuiger de olie weg en stijgt de last
   const go=hF2()>=hFz()&&hF1()>0&&s1<SMAX;
+  if(go!=moving){moving=go;drawPers()}
   if(go){s1=reduce?SMAX:Math.min(SMAX,s1+.12);hmsg=s1>=SMAX?"De kleine zuiger is helemaal ingeduwd.":"";drawPers()}
   requestAnimationFrame(anim)}
 
