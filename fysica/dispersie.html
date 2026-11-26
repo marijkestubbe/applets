@@ -168,6 +168,25 @@ function resize(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio
   const s=Math.min(r.width/W,r.height/H);view={s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2,dpr};draw()}
 function line(a,b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
 function label(t,x,y,c="#fff",size=14,align="left"){ctx.font=`700 ${size}px "Atkinson Hyperlegible",system-ui,sans-serif`;ctx.textAlign=align;ctx.fillStyle=c;ctx.fillText(t,x,y)}
+// wit licht als regenboogband: de stralen volgen hun berekende richting, maar krijgen een zichtbare breedte
+// die vanaf het intreepunt opengaat, zodat elke kleur zichtbaar blijft (violet aan de kant van de sterkste breking)
+let bandY={};
+function ribbon(rays){bandY={};
+  ctx.globalCompositeOperation="source-over";
+  const V=rays[0],R=rays[rays.length-1]; // rays lopen van 400 nm (violet) tot 700 nm (rood)
+  const lenIn=R.seg[1]?len(sub(R.seg[1][1],R.seg[1][0])):1,BAND=26;
+  // per segment: loodrechte richting naar de kant waar violet heen buigt
+  const side=k=>{const a=R.seg[k],b=V.seg[k];if(!a||!b)return v(0,0);const dir=unit(sub(a[1],a[0]));let pr=v(-dir.y,dir.x);
+    const diff=sub(b[1],a[1]);if(dot(pr,diff)<0)pr=mul(pr,-1);if(len(diff)<1e-9){const P=prism(),c=centroid(P);if(dot(pr,sub(c,a[1]))>0)pr=mul(pr,-1)}return pr};
+  const sides=R.seg.map((_,k)=>side(k));
+  const order=[...rays].sort((a,b)=>b.l-a.l); // rood eerst, violet bovenop
+  for(const r of order){const f=(700-r.l)/300; // 0 = rood, 1 = violet
+    ctx.strokeStyle=css(r.l);ctx.lineWidth=2.4;let s0=0;
+    for(let k=1;k<r.seg.length;k++){const [a,b]=r.seg[k],L=len(sub(b,a)),pr=sides[k]||v(0,0);
+      const oa=(f-.5)*BAND*Math.min(1,s0/lenIn),ob=(f-.5)*BAND*Math.min(1,(s0+L)/lenIn);
+      const pb=add(b,mul(pr,ob));line(add(a,mul(pr,oa)),pb);s0+=L;if(k==r.seg.length-1&&r.hitScreen)bandY[r.l]=pb.y}}
+  ctx.globalCompositeOperation="lighter";
+}
 function draw(){
   const {s,ox,oy,dpr}=view;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
   ctx.setTransform(s*dpr,0,0,s*dpr,ox*dpr,oy*dpr);
@@ -184,9 +203,10 @@ function draw(){
   const R0=rays[0];
   ctx.globalCompositeOperation="lighter";
   ctx.strokeStyle=light<0?"rgba(255,255,255,.95)":css(R0.l);ctx.lineWidth=5;line(R0.seg[0][0],R0.seg[0][1]);
-  for(const r of rays){ctx.strokeStyle=css(r.l,light<0?.45:1);ctx.lineWidth=light<0?3:4;for(let k=1;k<r.seg.length;k++)line(r.seg[k][0],r.seg[k][1])}
+  if(light>=0){ctx.strokeStyle=css(R0.l);ctx.lineWidth=4;for(let k=1;k<R0.seg.length;k++)line(R0.seg[k][0],R0.seg[k][1])}
+  else ribbon(rays);
   // vlek op het scherm
-  for(const r of rays)if(r.hitScreen){ctx.fillStyle=css(r.l,light<0?.5:1);ctx.beginPath();ctx.arc(SX+2,r.hitScreen.y,light<0?4:6,0,7);ctx.fill()}
+  if(light>=0&&R0.hitScreen){ctx.fillStyle=css(R0.l);ctx.beginPath();ctx.arc(SX+2,R0.hitScreen.y,6,0,7);ctx.fill()}
   ctx.globalCompositeOperation="source-over";
   // prisma
   ctx.beginPath();ctx.moveTo(P[0].x,P[0].y);ctx.lineTo(P[1].x,P[1].y);ctx.lineTo(P[2].x,P[2].y);ctx.closePath();
@@ -212,7 +232,7 @@ function draw(){
     const named=(light<0?COLORS:[COLORS[light]]).map(c=>({c,r:trace(c.l,ai)})).filter(o=>o.r.hitScreen).sort((a,b)=>a.r.hitScreen.y-b.r.hitScreen.y);
     if(named.length){const gap=20,mid=named.reduce((t,o)=>t+o.r.hitScreen.y,0)/named.length;
       let y0=Math.max(30,Math.min(H-30-gap*(named.length-1),mid-gap*(named.length-1)/2));
-      named.forEach((o,i)=>{const y=y0+i*gap,hy=o.r.hitScreen.y;
+      named.forEach((o,i)=>{const y=y0+i*gap,hy=light<0&&bandY[o.c.l]!=null?bandY[o.c.l]:o.r.hitScreen.y;
         ctx.strokeStyle=css(o.c.l,.8);ctx.lineWidth=1.2;line(v(SX+16,hy),v(SX+52,y));
         label(o.c.n,SX+56,y+5,css(o.c.l),15,"left")})}}
   if($("tX").checked)label("kleurschifting ×4 vergroot",SX-8,34,"#ffb3c0",13,"right");
