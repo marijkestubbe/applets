@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Serie- en parallelschakeling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: een schakelbord met een raster; onderdelen leggen op de lijntjes, de schakeling wordt echt doorgerekend (Ohm en Kirchhoff)
+LAYOUT: schakelbord links, gereedschap en metingen rechts; onder 760px gestapeld
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);min-height:100vh}
+.scene{display:flex;flex-direction:column;background:#eef2ee;min-height:600px}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 0}
+.box{background:rgba(255,255,255,.96);color:#15171a;border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.place h1{margin:0;font-size:clamp(22px,3vw,32px);line-height:1.1}
+.place p{margin:4px 0 0;font-size:15px;max-width:36ch}
+.read{text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:1px;min-width:150px}
+.read small{font-size:13px;color:#5d636b}
+.read .m{font-size:clamp(17px,2vw,22px);font-weight:700;white-space:nowrap}
+.read .warn{color:#fff;background:#e4002b;border-radius:6px;padding:2px 8px;font-weight:700}
+.stage{position:relative;flex:1;min-height:440px}
+.stage svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.row,.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tools button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;font-size:14px;min-height:72px}
+.tools svg{width:56px;height:30px}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.danger{border-color:var(--red);color:var(--red)}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
+.sl label{font-weight:700}
+.sl output{font-variant-numeric:tabular-nums;color:var(--mut)}
+.sl input{grid-column:1/-1;width:100%;accent-color:var(--red);height:32px}
+.props{background:var(--card);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.props h2{margin:0}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:14px;color:var(--mut);font-weight:700}
+.empty td{text-align:left;color:var(--mut);white-space:normal}
+@media(min-width:761px){.scene{position:sticky;top:0;height:100vh}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.tools{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" aria-label="Schakelbord">
+    <div class="hud">
+      <div class="box place"><h1>Serie- en parallelschakeling</h1><p id="instr"></p></div>
+      <div class="box read" id="read" aria-live="polite"></div>
+    </div>
+    <div class="stage"><svg id="svg" viewBox="0 0 760 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Schakeling op een raster"></svg></div>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Voorbeelden</h2>
+      <div class="row">
+        <button data-preset="serie">Serieschakeling</button>
+        <button data-preset="parallel">Parallelschakeling</button>
+        <button data-preset="gemengd">Gemengde schakeling</button>
+        <button data-preset="leeg">Leeg schakelbord</button>
+      </div>
+    </div>
+    <div>
+      <h2>Gereedschap</h2>
+      <div class="tools" id="tools"></div>
+      <p class="hint">Kies een onderdeel en klik op een lijntje in het raster. Draden kun je in één beweging trekken. Met ‘Aanpassen’ klik je op een onderdeel om het te wijzigen; een schakelaar zet je zo aan of uit.</p>
+    </div>
+    <div class="props" id="props" hidden></div>
+    <div>
+      <h2>Lampjes tekenen</h2>
+      <div class="row"><button data-lamp="0" aria-pressed="true">Schematisch (symbool)</button><button data-lamp="1" aria-pressed="false">Realistisch (met licht)</button></div>
+    </div>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tVal" checked> Waarden van de onderdelen tonen</label>
+      <label class="tg"><input type="checkbox" id="tFlow" checked> Stroom tonen (bewegende bolletjes)</label>
+      <label class="tg"><input type="checkbox" id="tAll"> Spanning en stroom bij elk onderdeel tonen</label>
+    </div>
+    <p class="hint">De bolletjes bewegen in de conventionele stroomzin: van + naar − buiten de bron. Een voltmeter heeft een zeer grote weerstand (10 MΩ), een ampèremeter bijna geen (0,001 Ω).</p>
+    <div>
+      <h2>Meettabel</h2>
+      <div class="row" style="margin-bottom:8px"><button id="note">Meting noteren</button><button id="clear">Tabel wissen</button></div>
+      <div class="tblwrap"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+    </div>
+  </section>
+</div>
+<script>
+{
+const $=id=>document.getElementById(id);
+const fmt=(x,n=2)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
+// ---------- raster ----------
+const COLS=7,ROWS=5,S=110,OX=50,OY=40;
+const nodeXY=(c,r)=>({x:OX+c*S,y:OY+r*S});
+const ends=k=>{const [o,c,r]=k.split(",");return o=="h"?[[+c,+r],[+c+1,+r]]:[[+c,+r],[+c,+r+1]]};
+const nid=([c,r])=>r*COLS+c;
+const EDGES=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(c<COLS-1)EDGES.push(`h,${c},${r}`);if(r<ROWS-1)EDGES.push(`v,${c},${r}`)}
+// ---------- onderdelen ----------
+const TYPES={
+ sel:{n:"Aanpassen"},
+ draad:{n:"Draad",p:"",R:1e-4},
+ bron:{n:"Spanningsbron",p:"U",def:6,min:0,max:12,step:.5,unit:"V"},
+ weerstand:{n:"Weerstand",p:"R",def:10,min:1,max:100,step:1,unit:"Ω"},
+ lamp:{n:"Lampje",p:"L",R:12},
+ schakelaar:{n:"Schakelaar",p:"S",R:1e-4},
+ volt:{n:"Voltmeter",p:"V",R:1e7},
+ amp:{n:"Ampèremeter",p:"A",R:1e-3},
+ gom:{n:"Verwijderen"}
+};
+const LAMP_P=3; // W: lampje van 6 V, 12 Ω brandt normaal bij 3 W
+let tool="sel",comps=new Map(),sel=null,sol=null,rows=[],realLamp=false;
+function nextName(t){const p=TYPES[t].p;if(!p)return "";let i=1;const used=new Set([...comps.values()].map(c=>c.name));while(used.has(p+i))i++;return p+i}
+function place(k,t){if(t=="gom"){comps.delete(k);if(sel==k)sel=null;return}
+  const old=comps.get(k);if(old&&old.t==t)return;
+  comps.set(k,{t,v:TYPES[t].def??null,flip:false,on:true,name:""});comps.get(k).name=nextName(t)}
+// ---------- doorrekenen: gemodificeerde knooppuntenmethode ----------
+function solve(){
+  const N=COLS*ROWS,srcs=[...comps.entries()].filter(([k,c])=>c.t=="bron"),M=srcs.length,D=N+M;
+  const A=Array.from({length:D},()=>new Float64Array(D)),z=new Float64Array(D);
+  for(let i=0;i<N;i++)A[i][i]+=1e-9; // heel kleine lek naar aarde: zwevende knopen blijven bepaald
+  const stamp=(a,b,g)=>{A[a][a]+=g;A[b][b]+=g;A[a][b]-=g;A[b][a]-=g};
+  const R=c=>c.t=="weerstand"?c.v:c.t=="schakelaar"?(c.on?1e-4:null):TYPES[c.t].R;
+  for(const [k,c] of comps){if(c.t=="bron")continue;const r=R(c);if(r==null)continue;const [a,b]=ends(k).map(nid);stamp(a,b,1/r)}
+  srcs.forEach(([k,c],j)=>{let [a,b]=ends(k).map(nid);if(c.flip)[a,b]=[b,a];const m=N+j;A[a][m]+=1;A[b][m]-=1;A[m][a]+=1;A[m][b]-=1;z[m]=c.v});
+  // gauss-eliminatie met spilkeuze
+  for(let i=0;i<D;i++){let p=i;for(let r=i+1;r<D;r++)if(Math.abs(A[r][i])>Math.abs(A[p][i]))p=r;
+    if(Math.abs(A[p][i])<1e-15)return {bad:true};[A[i],A[p]]=[A[p],A[i]];[z[i],z[p]]=[z[p],z[i]];
+    for(let r=i+1;r<D;r++){const f=A[r][i]/A[i][i];if(!f)continue;for(let c=i;c<D;c++)A[r][c]-=f*A[i][c];z[r]-=f*z[i]}}
+  const x=new Float64Array(D);for(let i=D-1;i>=0;i--){let s=z[i];for(let c=i+1;c<D;c++)s-=A[i][c]*x[c];x[i]=s/A[i][i]}
+  const V=i=>x[i],res=new Map();let short=false;
+  for(const [k,c] of comps){const [a,b]=ends(k).map(nid);let I=0,U=V(a)-V(b);
+    if(c.t=="bron"){const j=srcs.findIndex(s=>s[0]==k);I=x[N+j]*(c.flip?-1:1);} // stroom van a naar b door de bron
+    else{const r=R(c);I=r==null?0:U/r}
+    if(Math.abs(I)>10)short=true;res.set(k,{U,I})}
+  return {res,short}
+}
+// meetwaarde van een meter: + aan de kant a, tenzij omgedraaid
+function reading(k,c){const r=sol&&sol.res.get(k);if(!r)return 0;const s=c.flip?-1:1;return c.t=="volt"?s*r.U:s*r.I}
+// ---------- tekenen ----------
+const svg=$("svg");
+function symbol(k,c){
+  const [p,q]=ends(k).map(([a,b])=>nodeXY(a,b)),mx=(p.x+q.x)/2,my=(p.y+q.y)/2,vert=p.x==q.x,rot=vert?90:0;
+  const isSel=sel==k,stroke=isSel?"#e4002b":"#15171a",sw=3;
+  let g="",L=S/2;
+  const w=(x1,x2)=>`<line x1="${x1}" x2="${x2}" y1="0" y2="0" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>`;
+  const r=sol&&sol.res.get(k)||{U:0,I:0};
+  if(c.t=="draad"||(c.t=="schakelaar"&&false))g=w(-L,L);
+  else if(c.t=="weerstand")g=w(-L,-26)+w(26,L)+`<rect x="-26" y="-10" width="52" height="20" rx="2" fill="#fff" stroke="${stroke}" stroke-width="${sw}"/>`;
+  else if(c.t=="lamp"){
+    if(realLamp)g=w(-L,-12)+w(12,L); // het peertje zelf wordt rechtop getekend (zie verder)
+    else g=w(-L,-17)+w(17,L)+`<circle r="17" fill="#fff" stroke="${stroke}" stroke-width="${sw}"/><path d="M-12 -12 L12 12 M-12 12 L12 -12" stroke="${stroke}" stroke-width="2.4"/>`}
+  else if(c.t=="bron"){const f=c.flip?-1:1;
+    g=`<g transform="scale(${f} 1)">`+w(-L,-7)+w(7,L)+`<line x1="-7" x2="-7" y1="-22" y2="22" stroke="${stroke}" stroke-width="3"/><line x1="7" x2="7" y1="-11" y2="11" stroke="${stroke}" stroke-width="8"/></g>`}
+  else if(c.t=="schakelaar"){g=w(-L,-20)+w(22,L)+`<circle cx="-20" r="4" fill="${stroke}"/><circle cx="22" r="4" fill="${stroke}"/>`+
+      (c.on?`<line x1="-20" x2="22" y1="0" y2="-3" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>`:`<line x1="-20" x2="16" y1="0" y2="-22" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>`)}
+  else if(c.t=="volt"||c.t=="amp"){g=w(-L,-19)+w(19,L)+`<circle r="19" fill="#fff" stroke="${stroke}" stroke-width="${sw}"/>`}
+  let o=`<g transform="translate(${mx} ${my}) rotate(${rot})">${g}</g>`;
+  if(c.t=="lamp"&&realLamp){ // realistisch peertje: hoe groter het vermogen, hoe feller
+    const P=Math.abs(r.U*r.I),b=Math.min(1.3,P/LAMP_P),on=b>.01,bb=Math.min(1,b);
+    o+=`<g transform="translate(${mx} ${my})">`+
+      (on?`<circle cy="-8" r="${20+44*bb}" fill="url(#glow)" opacity="${.2+.8*bb}"/>`:"")+
+      `<path d="M-10 6 C-22 -2 -22 -30 0 -32 C22 -30 22 -2 10 6 Z" fill="${on?`rgba(255,${Math.round(245-45*bb)},${Math.round(170-120*bb)},${.35+.6*bb})`:"rgba(235,242,246,.9)"}" stroke="${isSel?"#e4002b":"#7d8a94"}" stroke-width="2"/>`+
+      `<path d="M-5 4 L-5 -12 M5 4 L5 -12" stroke="#5d636b" stroke-width="1.6"/>`+
+      `<path d="M-5 -12 l2 -4 l2 4 l2 -4 l2 4 l2 -4" fill="none" stroke="${on?`rgb(255,${Math.round(200+55*bb)},${Math.round(60+180*bb)})`:"#4b525a"}" stroke-width="${on?2.4:1.6}"/>`+
+      `<rect x="-11" y="6" width="22" height="14" rx="2" fill="#9aa3ad" stroke="#5d636b"/><path d="M-11 10 h22 M-11 14 h22" stroke="#5d636b"/><rect x="-5" y="20" width="10" height="4" rx="1" fill="#3a3f45"/></g>`}
+  // tekst rechtop houden
+  if(c.t=="volt"||c.t=="amp")o+=`<text x="${mx}" y="${my+8}" text-anchor="middle" font-size="22" font-weight="700" fill="${stroke}">${c.t=="volt"?"V":"A"}</text>`;
+  // + en − bij bron en meters
+  if(c.t=="bron"||c.t=="volt"||c.t=="amp"){const plusA=!c.flip,d=c.t=="bron"?16:30,ox=vert?16:0,oy=vert?0:-16;
+    const pa={x:mx+(vert?0:-d),y:my+(vert?-d:0)},pb={x:mx+(vert?0:d),y:my+(vert?d:0)};
+    const P1=plusA?pa:pb,P2=plusA?pb:pa,sx=vert?22:0,sy=vert?0:-22;
+    o+=`<text x="${P1.x+sx}" y="${P1.y+sy+6}" text-anchor="middle" font-size="18" font-weight="700" fill="#e4002b">+</text><text x="${P2.x+sx}" y="${P2.y+sy+6}" text-anchor="middle" font-size="18" font-weight="700" fill="#15171a">−</text>`}
+  // labels
+  // label naast een verticaal onderdeel: rechts, tenzij daar al een onderdeel staat
+  const [o0,c0,r0]=k.split(","),busyRight=vert&&comps.has(`v,${+c0+1},${r0}`);
+  const lx=mx+(vert?(busyRight?-30:30):0),ly=my+(vert?4:-30),anchor=vert?(busyRight?"end":"start"):"middle";
+  if(c.t=="volt"||c.t=="amp"){const val=reading(k,c),bad=sol&&sol.short;
+    const txt=c.t=="volt"?`${fmt(val,2)} V`:`${fmt(val,3)} A`;
+    const bw=vert?124:104,bx=vert?mx+30:mx-bw/2,by=vert?my-15:my+26; // naam en meetwaarde samen in één kadertje
+    o+=`<g><rect x="${bx}" y="${by}" width="${bw}" height="30" rx="6" fill="#15171a"/><text x="${bx+7}" y="${by+20}" font-size="12" font-weight="700" fill="#fff">${c.name}</text><text x="${bx+bw-7}" y="${by+21}" text-anchor="end" font-size="16" font-weight="700" fill="${bad?"#ff6b81":"#7CFC9A"}" font-family="ui-monospace,Consolas,monospace">${txt}</text></g>`}
+  else if(c.t!="draad"&&$("tVal").checked){const val=c.t=="bron"?`${fmt(c.v,1)} V`:c.t=="weerstand"?`${c.v} Ω`:c.t=="lamp"?"6 V / 3 W":c.on?"aan":"uit";
+    o+=`<text x="${lx}" y="${ly}" text-anchor="${anchor}" font-size="14" font-weight="700" fill="#15171a">${c.name}${c.t=="schakelaar"?"":" = "}${c.t=="schakelaar"?" ("+val+")":val}</text>`}
+  if($("tAll").checked&&!["draad","volt","amp"].includes(c.t)&&sol&&!sol.short){
+    o+=`<text x="${lx}" y="${ly+(vert?18:-17)}" text-anchor="${anchor}" font-size="12" fill="#3a6ea8">${fmt(Math.abs(r.U),2)} V · ${fmt(Math.abs(r.I),3)} A</text>`}
+  return o}
+function render(){
+  let o=`<defs><radialGradient id="glow"><stop offset="0" stop-color="#fff6a0" stop-opacity=".95"/><stop offset=".5" stop-color="#ffd84d" stop-opacity=".45"/><stop offset="1" stop-color="#ffd84d" stop-opacity="0"/></radialGradient></defs>`;
+  o+=`<rect x="10" y="5" width="740" height="510" rx="14" fill="#fbfcfb" stroke="#cfd8cf"/>`;
+  // raster
+  for(const k of EDGES)if(!comps.has(k)){const [p,q]=ends(k).map(([a,b])=>nodeXY(a,b));o+=`<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="#d5ddd5" stroke-width="2" stroke-dasharray="4 6"/>`}
+  if(sol&&sol.short)for(const [k,c] of comps){const r=sol.res.get(k);if(Math.abs(r.I)>10){const [p,q]=ends(k).map(([a,b])=>nodeXY(a,b));o+=`<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="#ff8a8a" stroke-width="14" stroke-linecap="round" opacity=".7"/>`}}
+  for(const [k,c] of comps)o+=symbol(k,c);
+  // knooppunten
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const n=nodeXY(c,r);const used=[...comps.keys()].some(k=>ends(k).some(e=>e[0]==c&&e[1]==r));o+=`<circle cx="${n.x}" cy="${n.y}" r="${used?5:3.5}" fill="${used?"#15171a":"#b9c4b9"}"/>`}
+  o+=`<g id="flow"></g><line id="hover" stroke="#e4002b" stroke-width="10" stroke-linecap="round" opacity="0"/>`;
+  // klikzones
+  for(const k of EDGES){const [p,q]=ends(k).map(([a,b])=>nodeXY(a,b));o+=`<line data-e="${k}" x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="transparent" stroke-width="34"/>`}
+  svg.innerHTML=o;
+}
+// ---------- bewegende stroombolletjes ----------
+let phase=0,lastT=0;
+function flow(t){
+  const dt=Math.min(.05,(t-lastT)/1000||0);lastT=t;phase+=dt;
+  const g=svg.querySelector("#flow");
+  if(g){let o="";if($("tFlow").checked&&sol&&!sol.bad)for(const [k,c] of comps){const r=sol.res.get(k);if(!r||c.t=="volt"||Math.abs(r.I)<2e-4)continue;
+    const [p,q]=ends(k).map(([a,b])=>nodeXY(a,b)),sp=Math.min(140,25+90*Math.sqrt(Math.abs(r.I))),dir=Math.sign(r.I);
+    const off=((phase*sp)%26+26)%26;
+    const gap=c.t=="draad"||(c.t=="schakelaar")?0:c.t=="weerstand"?30:22;
+    for(let s=off;s<S;s+=26){if(gap&&Math.abs(s-S/2)<gap)continue;const f=dir>0?s/S:1-s/S;o+=`<circle cx="${p.x+(q.x-p.x)*f}" cy="${p.y+(q.y-p.y)*f}" r="3.6" fill="#f2a541" stroke="#8a5a12" stroke-width="1"/>`}}
+    g.innerHTML=o}
+  requestAnimationFrame(flow)}
+// ---------- uitlezing en paneel ----------
+function update(){
+  sol=comps.size?solve():null;render();
+  const meters=[...comps.entries()].filter(([k,c])=>c.t=="volt"||c.t=="amp").sort((a,b)=>a[1].name.localeCompare(b[1].name,"nl",{numeric:true}));
+  let h="";
+  if(sol&&sol.short)h+=`<span class="warn">Kortsluiting!</span><small>Er loopt een gevaarlijk grote stroom.</small>`;
+  if(!meters.length)h+=`<small>Nog geen meters aangesloten</small>`;
+  for(const [k,c] of meters)h+=`<span><small>${c.t=="volt"?"Voltmeter":"Ampèremeter"} ${c.name}</small> <span class="m">${c.t=="volt"?fmt(reading(k,c),2)+" V":fmt(reading(k,c),3)+" A"}</span></span>`;
+  $("read").innerHTML=h;
+  $("instr").textContent=tool=="sel"?"Klik op een onderdeel om het aan te passen, of kies links een onderdeel om te plaatsen.":tool=="gom"?"Klik op een onderdeel om het te verwijderen.":`Klik op een lijntje in het raster om een ${TYPES[tool].n.toLowerCase()} te plaatsen.`;
+  props();
+}
+function props(){
+  const P=$("props"),c=sel&&comps.get(sel);if(!c){P.hidden=true;return}P.hidden=false;const T=TYPES[c.t];
+  let o=`<h2>${c.name||T.n}${c.name?` (${T.n.toLowerCase()})`:""}</h2>`;
+  if(T.unit)o+=`<div class="sl"><label for="pv">${c.t=="bron"?"Spanning U":"Weerstand R"}</label><output id="pvo">${c.t=="bron"?fmt(c.v,1):c.v} ${T.unit}</output><input type="range" id="pv" min="${T.min}" max="${T.max}" step="${T.step}" value="${c.v}"></div>`;
+  if(c.t=="lamp")o+=`<p class="hint" style="margin:0">Lampje van 6 V / 3 W (weerstand 12 Ω). Kies ‘Realistisch’ om te zien hoe fel het brandt: hoe groter het vermogen, hoe feller.</p>`;
+  const btn=[];
+  if(c.t=="schakelaar")btn.push(`<button id="ptog">${c.on?"Schakelaar openen (uit)":"Schakelaar sluiten (aan)"}</button>`);
+  if(c.t=="bron"||c.t=="volt"||c.t=="amp")btn.push(`<button id="pflip">+ en − omwisselen</button>`);
+  btn.push(`<button id="pdel" class="danger">Verwijderen</button>`);
+  o+=`<div class="row">${btn.join("")}</div>`;P.innerHTML=o;
+  const pv=$("pv");if(pv)pv.oninput=()=>{c.v=+pv.value;$("pvo").textContent=(c.t=="bron"?fmt(c.v,1):c.v)+" "+T.unit;sol=solve();render();refreshRead()};
+  const pt=$("ptog");if(pt)pt.onclick=()=>{c.on=!c.on;update()};
+  const pf=$("pflip");if(pf)pf.onclick=()=>{c.flip=!c.flip;update()};
+  $("pdel").onclick=()=>{comps.delete(sel);sel=null;update()};
+}
+function refreshRead(){const keep=sel;const P=$("props");const ae=document.activeElement&&document.activeElement.id;
+  // alleen de uitlezing vernieuwen, zodat het schuifje blijft werken
+  const meters=[...comps.entries()].filter(([k,c])=>c.t=="volt"||c.t=="amp").sort((a,b)=>a[1].name.localeCompare(b[1].name,"nl",{numeric:true}));
+  let h="";if(sol&&sol.short)h+=`<span class="warn">Kortsluiting!</span><small>Er loopt een gevaarlijk grote stroom.</small>`;
+  if(!meters.length)h+=`<small>Nog geen meters aangesloten</small>`;
+  for(const [k,c] of meters)h+=`<span><small>${c.t=="volt"?"Voltmeter":"Ampèremeter"} ${c.name}</small> <span class="m">${c.t=="volt"?fmt(reading(k,c),2)+" V":fmt(reading(k,c),3)+" A"}</span></span>`;
+  $("read").innerHTML=h}
+// ---------- gereedschap ----------
+const ICON={
+ sel:`<path d="M20 4 L20 26 L26 20 L31 29 L35 27 L30 18 L38 18Z" fill="currentColor"/>`,
+ draad:`<line x1="4" x2="52" y1="15" y2="15" stroke="currentColor" stroke-width="3"/>`,
+ bron:`<line x1="4" x2="25" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><line x1="31" x2="52" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><line x1="25" x2="25" y1="3" y2="27" stroke="currentColor" stroke-width="3"/><line x1="31" x2="31" y1="9" y2="21" stroke="currentColor" stroke-width="6"/>`,
+ weerstand:`<line x1="4" x2="16" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><line x1="40" x2="52" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><rect x="16" y="9" width="24" height="12" fill="none" stroke="currentColor" stroke-width="3"/>`,
+ lamp:`<line x1="4" x2="18" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><line x1="38" x2="52" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><circle cx="28" cy="15" r="10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M21 8 L35 22 M21 22 L35 8" stroke="currentColor" stroke-width="2"/>`,
+ schakelaar:`<line x1="4" x2="16" y1="20" y2="20" stroke="currentColor" stroke-width="3"/><line x1="40" x2="52" y1="20" y2="20" stroke="currentColor" stroke-width="3"/><line x1="16" x2="38" y1="20" y2="6" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="20" r="3" fill="currentColor"/><circle cx="40" cy="20" r="3" fill="currentColor"/>`,
+ volt:`<line x1="4" x2="17" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><line x1="39" x2="52" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><circle cx="28" cy="15" r="11" fill="none" stroke="currentColor" stroke-width="3"/><text x="28" y="20" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">V</text>`,
+ amp:`<line x1="4" x2="17" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><line x1="39" x2="52" y1="15" y2="15" stroke="currentColor" stroke-width="3"/><circle cx="28" cy="15" r="11" fill="none" stroke="currentColor" stroke-width="3"/><text x="28" y="20" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">A</text>`,
+ gom:`<path d="M14 24 L30 6 L42 16 L30 28 L18 28Z" fill="none" stroke="currentColor" stroke-width="3"/><line x1="22" x2="34" y1="16" y2="26" stroke="currentColor" stroke-width="3"/>`
+};
+$("tools").innerHTML=Object.keys(TYPES).map(t=>`<button data-tool="${t}" aria-pressed="${t==tool}"><svg viewBox="0 0 56 30" aria-hidden="true">${ICON[t]}</svg>${TYPES[t].n}</button>`).join("");
+// ---------- klikken en slepen op het schakelbord ----------
+let down=false,lastE=null;
+const edgeAt=e=>{const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.dataset&&el.dataset.e||null};
+function act(k){if(!k)return;
+  if(tool=="sel"){if(comps.has(k)){const c=comps.get(k);if(c.t=="schakelaar"&&sel==k){c.on=!c.on}sel=k}else sel=null;update();return}
+  place(k,tool);if(tool!="gom")sel=k;update()}
+svg.addEventListener("pointerdown",e=>{const k=edgeAt(e);down=true;lastE=k;act(k);e.preventDefault()});
+svg.addEventListener("pointermove",e=>{const k=edgeAt(e),h=svg.querySelector("#hover");
+  if(h){if(k&&tool!="sel"){const [p,q]=ends(k).map(([a,b])=>nodeXY(a,b));h.setAttribute("x1",p.x);h.setAttribute("y1",p.y);h.setAttribute("x2",q.x);h.setAttribute("y2",q.y);h.setAttribute("opacity",".25")}else h.setAttribute("opacity","0")}
+  svg.style.cursor=k&&(tool!="sel"||comps.has(k))?"pointer":"default";
+  if(down&&(tool=="draad"||tool=="gom")&&k&&k!=lastE){lastE=k;act(k)}});
+["pointerup","pointercancel","pointerleave"].forEach(t=>svg.addEventListener(t,()=>{down=false;lastE=null}));
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.tool){tool=b.dataset.tool;document.querySelectorAll("[data-tool]").forEach(x=>x.setAttribute("aria-pressed",x==b));if(tool!="sel")sel=null;update()}
+  if(b.dataset.preset){preset(b.dataset.preset)}
+  if(b.dataset.lamp!=null){realLamp=b.dataset.lamp=="1";document.querySelectorAll("[data-lamp]").forEach(x=>x.setAttribute("aria-pressed",x==b));update()}});
+["tVal","tFlow","tAll"].forEach(id=>$(id).addEventListener("change",update));
+// ---------- voorbeelden ----------
+function build(list){comps=new Map();sel=null;for(const [k,t,v,extra] of list){place(k,t);const c=comps.get(k);if(v!=null)c.v=v;if(extra)Object.assign(c,extra)}}
+const wires=ks=>ks.map(k=>[k,"draad"]);
+function preset(p){
+  if(p=="leeg")build([]);
+  if(p=="serie")build([["v,0,2","bron",6],...wires(["v,0,1","h,0,1","h,0,3","h,1,3","h,2,3","h,3,3","v,4,1","v,4,2","v,1,0","v,2,0","v,3,0"]),
+    ["h,1,1","weerstand",10],["h,2,1","weerstand",20],["h,3,1","amp"],["h,1,0","volt"],["h,2,0","volt"]]);
+  if(p=="parallel")build([["v,0,2","bron",6],...wires(["v,0,1","h,1,1","h,2,1","h,3,1","h,0,3","h,1,3","h,2,3","h,3,3","h,4,2","h,4,3"]),
+    ["h,0,1","amp"],["v,2,1","amp"],["v,2,2","weerstand",10],["v,4,1","amp"],["v,4,2","weerstand",20],["v,5,2","volt"]]);
+  if(p=="gemengd")build([["v,0,2","bron",6],...wires(["v,0,1","h,2,1","v,3,1","h,3,1","h,4,1","v,5,1","h,0,3","h,1,3","h,2,3","h,3,3","h,4,3","v,1,0","v,2,0"]),
+    ["h,0,1","amp"],["h,1,1","weerstand",10],["v,3,2","lamp"],["v,5,2","lamp"],["h,1,0","volt"]]);
+  // namen in leesvolgorde
+  update()}
+// ---------- meettabel ----------
+function renderTable(){const names=[...new Set(rows.flatMap(r=>Object.keys(r)))].sort((a,b)=>a.localeCompare(b,"nl",{numeric:true}));
+  $("th").innerHTML=`<tr><th>Meting</th>${names.map(n=>`<th>${n} (${n[0]=="V"?"V":"A"})</th>`).join("")}</tr>`;
+  $("tb").innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td>${names.map(n=>`<td>${r[n]==null?"–":n[0]=="V"?fmt(r[n],2):fmt(r[n],3)}</td>`).join("")}</tr>`).join(""):`<tr class="empty"><td>Nog geen metingen. Sluit meters aan en klik op ‘Meting noteren’.</td></tr>`}
+$("note").onclick=()=>{const r={};for(const [k,c] of comps)if(c.t=="volt"||c.t=="amp")r[c.name]=reading(k,c);rows.push(r);renderTable()};
+$("clear").onclick=()=>{rows=[];renderTable()};
+renderTable();preset("serie");requestAnimationFrame(flow);
+}
+</script>
+</body>
+</html>
