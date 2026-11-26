@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dispersie van licht</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: verduisterd lokaal: een lichtbron, een prisma en een wit scherm; licht wordt echt doorgerekend met de wet van Snellius
+LAYOUT: scène links (bewust donker, zoals een verduisterd lokaal), bediening rechts; onder 760px gestapeld
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);min-height:100vh}
+.scene{display:flex;flex-direction:column;background:#0b0f14;min-height:560px}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 0}
+.box{background:rgba(255,255,255,.95);color:#15171a;border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.place h1{margin:0;font-size:clamp(24px,3.2vw,36px);line-height:1.1}
+.place p{margin:4px 0 0;font-size:16px;max-width:30ch}
+.read{text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px}
+.read small{display:block;font-size:13px;color:#5d636b}
+.read .big{font-size:clamp(20px,2.6vw,28px);font-weight:700;white-space:nowrap}
+.read .mid{font-size:clamp(15px,1.8vw,19px);font-weight:700;white-space:nowrap}
+.read .warn{color:#e4002b;font-weight:700}
+.stage{position:relative;flex:1;min-height:420px}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.chips,.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chips i{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:6px;vertical-align:-2px;border:1px solid rgba(0,0,0,.3)}
+.chips i.white{background:conic-gradient(red,orange,yellow,lime,cyan,blue,violet,red)}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
+.sl label{font-weight:700}
+.sl output{font-variant-numeric:tabular-nums;color:var(--mut)}
+.sl input{grid-column:1/-1;width:100%;accent-color:var(--red);height:32px}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:14px;color:var(--mut);font-weight:700}
+td i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+tr.cur td{font-weight:700;background:var(--card)}
+@media(min-width:761px){.scene{position:sticky;top:0;height:100vh}}
+@media(max-width:760px){.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" aria-label="Lichtbron, prisma en scherm in een verduisterd lokaal">
+    <div class="hud">
+      <div class="box place"><h1>Dispersie van licht</h1><p>Sleep de lichtbron om de invalshoek te veranderen.</p></div>
+      <div class="box read" id="read" aria-live="polite"></div>
+    </div>
+    <div class="stage" id="stage"><canvas id="cv"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Welk licht?</h2>
+      <div class="chips" id="lights"></div>
+    </div>
+    <div>
+      <h2>Materiaal van het prisma</h2>
+      <div class="chips" id="mats"></div>
+    </div>
+    <div>
+      <h2>Tophoek van het prisma</h2>
+      <div class="chips" id="tops"></div>
+    </div>
+    <div class="sl">
+      <label for="ai">Invalshoek</label><output id="aio" for="ai"></output>
+      <input type="range" id="ai" min="0" max="85" step="0.5" value="48">
+    </div>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tN" checked> Normalen tonen</label>
+      <label class="tg"><input type="checkbox" id="tA" checked> Hoeken tonen</label>
+      <label class="tg"><input type="checkbox" id="tL" checked> Kleuren benoemen op het scherm</label>
+      <label class="tg"><input type="checkbox" id="tX"> Kleurschifting vergroot tonen (×4)</label>
+      <label class="tg"><input type="checkbox" id="tT"> Tabel met brekingsindices tonen</label>
+    </div>
+    <p class="hint">Hoeken worden gemeten ten opzichte van de normaal. De afwijkingshoek δ is de hoek tussen de invallende en de uittredende lichtstraal.</p>
+    <div id="tblwrap" hidden>
+      <h2 id="tbltitle">Brekingsindex per kleur</h2>
+      <div class="tblwrap"><table><thead><tr><th>Kleur</th><th>λ (nm)</th><th>n</th><th>δ (°)</th></tr></thead><tbody id="tb"></tbody></table></div>
+      <p class="hint">Hoe korter de golflengte, hoe groter de brekingsindex en hoe sterker het licht gebroken wordt.</p>
+    </div>
+  </section>
+</div>
+<script>
+{
+// kleuren van de regenboog met een typische golflengte (nm)
+const COLORS=[{n:"rood",l:700},{n:"oranje",l:620},{n:"geel",l:580},{n:"groen",l:530},{n:"blauw",l:470},{n:"indigo",l:440},{n:"violet",l:400}];
+// formule van Cauchy n(λ) = A + B/λ² (λ in µm), afgesteld op gemeten waarden bij 486 nm en 656 nm
+const MATS=[{n:"Water",A:1.3238,B:.00314},{n:"Kroonglas",A:1.5045,B:.00424},{n:"Flintglas",A:1.5942,B:.00894},{n:"Diamant",A:2.379,B:.0133}];
+const TOPS=[45,60,75];
+let light=-1,mat=1,top=60; // light -1 = wit licht
+const $=id=>document.getElementById(id);
+const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
+const nOf=l=>{const m=MATS[mat],B=m.B*($("tX").checked?4:1),u=l/1000;return m.A+B/(u*u)};
+function rgb(l){let r=0,g=0,b=0;
+  if(l<440){r=-(l-440)/60;b=1}else if(l<490){g=(l-440)/50;b=1}else if(l<510){g=1;b=-(l-510)/20}
+  else if(l<580){r=(l-510)/70;g=1}else if(l<645){r=1;g=-(l-645)/65}else r=1;
+  const f=l<420?.3+.7*(l-380)/40:l>700?.3+.7*(780-l)/80:1;
+  return [r,g,b].map(v=>Math.round(255*Math.pow(v*f,.8)))}
+const css=(l,a=1)=>{const [r,g,b]=rgb(l);return `rgba(${r},${g},${b},${a})`};
+$("lights").innerHTML=`<button data-l="-1" aria-pressed="true"><i class="white"></i>Wit licht</button>`+COLORS.map((c,i)=>`<button data-l="${i}" aria-pressed="false"><i style="background:${css(c.l)}"></i>${c.n}</button>`).join("");
+$("mats").innerHTML=MATS.map((m,i)=>`<button data-m="${i}" aria-pressed="${i==mat}">${m.n}</button>`).join("");
+$("tops").innerHTML=TOPS.map(t=>`<button data-t="${t}" aria-pressed="${t==top}">${t}°</button>`).join("");
+
+// ---------- meetkunde ----------
+const W=900,H=600,SX=770;            // logische tekengrootte, x van het scherm
+const v=(x,y)=>({x,y}),add=(a,b)=>v(a.x+b.x,a.y+b.y),sub=(a,b)=>v(a.x-b.x,a.y-b.y),mul=(a,k)=>v(a.x*k,a.y*k);
+const dot=(a,b)=>a.x*b.x+a.y*b.y,cross=(a,b)=>a.x*b.y-a.y*b.x,len=a=>Math.hypot(a.x,a.y),unit=a=>mul(a,1/len(a));
+const rot=(a,t)=>v(a.x*Math.cos(t)-a.y*Math.sin(t),a.x*Math.sin(t)+a.y*Math.cos(t));
+const deg=r=>r*180/Math.PI,rad=d=>d*Math.PI/180;
+function prism(){const B=280,h=(B/2)/Math.tan(rad(top/2)),cx=400,by=400;
+  return [v(cx-B/2,by),v(cx,by-h),v(cx+B/2,by)]} // links onder, top, rechts onder
+const centroid=P=>v((P[0].x+P[1].x+P[2].x)/3,(P[0].y+P[1].y+P[2].y)/3);
+function outNormal(P,i){const a=P[i],b=P[(i+1)%3],t=unit(sub(b,a));let n=v(t.y,-t.x);if(dot(n,sub(a,centroid(P)))<0)n=mul(n,-1);return n}
+function refract(d,nrm,eta){ // nrm wijst naar de kant van de invallende straal
+  const ci=-dot(nrm,d),k=1-eta*eta*(1-ci*ci);
+  if(k<0)return {tir:true,d:unit(add(d,mul(nrm,2*ci)))};
+  return {tir:false,d:unit(add(mul(d,eta),mul(nrm,eta*ci-Math.sqrt(k))))}}
+function hitEdge(P,p,d,skip){let best=null;
+  for(let i=0;i<3;i++){if(i===skip)continue;const a=P[i],e=sub(P[(i+1)%3],a),den=cross(d,e);if(Math.abs(den)<1e-9)continue;
+    const w=sub(a,p),t=cross(w,e)/den,s=cross(w,d)/den;if(t>1e-6&&s>=0&&s<=1&&(!best||t<best.t))best={t,i,p:add(p,mul(d,t))}}
+  return best}
+// volg één golflengte door het prisma
+function trace(l,ai){
+  const P=prism(),n=nOf(l),E=v((P[0].x+P[1].x)/2,(P[0].y+P[1].y)/2),no=outNormal(P,0),ni=mul(no,-1);
+  const d0=unit(rot(ni,-rad(ai))),src=sub(E,mul(d0,250));
+  const seg=[[src,E]],r1=refract(d0,no,1/n);
+  const out={l,n,src,E,d0,seg,angles:[]};
+  out.angles.push({p:E,nrm:no,i:Math.abs(ai),r:deg(Math.acos(Math.min(1,dot(r1.d,ni))))});
+  let p=E,d=r1.d,edge=0,tirs=0;
+  for(let k=0;k<6;k++){
+    const h=hitEdge(P,p,d,edge);if(!h)break;seg.push([p,h.p]);
+    const on=outNormal(P,h.i),inN=mul(on,-1),r=refract(d,inN,n);
+    const ci=Math.acos(Math.min(1,dot(d,on)));
+    if(r.tir){tirs++;p=h.p;d=r.d;edge=h.i;out.angles.push({p:h.p,nrm:on,i:deg(ci),r:null,tir:true});continue}
+    out.angles.push({p:h.p,nrm:on,i:deg(ci),r:deg(Math.acos(Math.min(1,dot(r.d,on))))});
+    // naar het scherm (of de rand van het beeld)
+    let t=2000;if(r.d.x>1e-6)t=Math.min(t,(SX-h.p.x)/r.d.x);
+    const end=add(h.p,mul(r.d,t));seg.push([h.p,end]);
+    out.exit=r.d;out.hitScreen=r.d.x>1e-6&&end.y>20&&end.y<H-20?end:null;
+    out.dev=deg(Math.acos(Math.max(-1,Math.min(1,dot(d0,r.d)))));
+    break}
+  out.tirs=tirs;return out}
+
+// ---------- tekenen ----------
+const cv=$("cv"),ctx=cv.getContext("2d");let view={s:1,ox:0,oy:0};
+function resize(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);
+  const s=Math.min(r.width/W,r.height/H);view={s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2,dpr};draw()}
+function line(a,b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+function label(t,x,y,c="#fff",size=14,align="left"){ctx.font=`700 ${size}px "Atkinson Hyperlegible",system-ui,sans-serif`;ctx.textAlign=align;ctx.fillStyle=c;ctx.fillText(t,x,y)}
+function draw(){
+  const {s,ox,oy,dpr}=view;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.setTransform(s*dpr,0,0,s*dpr,ox*dpr,oy*dpr);
+  const ai=+$("ai").value,P=prism();
+  // tafel
+  ctx.fillStyle="#151b23";ctx.fillRect(-500,560,W+1000,200);
+  // scherm
+  ctx.fillStyle="#e9ecef";ctx.fillRect(SX,20,14,H-40);label("scherm",SX+7,H-4,"#9aa3ad",12,"center");
+  // stralen
+  const lams=light<0?Array.from({length:61},(_,i)=>400+i*5):[COLORS[light].l];
+  const rays=lams.map(l=>trace(l,ai));
+  ctx.lineCap="round";
+  // invallende straal
+  const R0=rays[0];
+  ctx.globalCompositeOperation="lighter";
+  ctx.strokeStyle=light<0?"rgba(255,255,255,.95)":css(R0.l);ctx.lineWidth=5;line(R0.seg[0][0],R0.seg[0][1]);
+  for(const r of rays){ctx.strokeStyle=css(r.l,light<0?.45:1);ctx.lineWidth=light<0?3:4;for(let k=1;k<r.seg.length;k++)line(r.seg[k][0],r.seg[k][1])}
+  // vlek op het scherm
+  for(const r of rays)if(r.hitScreen){ctx.fillStyle=css(r.l,light<0?.5:1);ctx.beginPath();ctx.arc(SX+2,r.hitScreen.y,light<0?4:6,0,7);ctx.fill()}
+  ctx.globalCompositeOperation="source-over";
+  // prisma
+  ctx.beginPath();ctx.moveTo(P[0].x,P[0].y);ctx.lineTo(P[1].x,P[1].y);ctx.lineTo(P[2].x,P[2].y);ctx.closePath();
+  ctx.fillStyle="rgba(170,210,255,.13)";ctx.fill();ctx.strokeStyle="rgba(200,225,255,.85)";ctx.lineWidth=2.5;ctx.stroke();
+  label(`${MATS[mat].n} (${top}°)`,(P[0].x+P[2].x)/2,P[0].y+26,"#c8dcff",15,"center");
+  // lichtbron
+  const d0=R0.d0,src=R0.src;ctx.save();ctx.translate(src.x,src.y);ctx.rotate(Math.atan2(d0.y,d0.x));
+  ctx.fillStyle="#3a4350";ctx.strokeStyle="#8a96a6";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-62,-20,62,40,6);ctx.fill();ctx.stroke();
+  ctx.fillStyle=light<0?"#fff":css(R0.l);ctx.fillRect(-4,-9,6,18);ctx.restore();
+  label("lichtbron",src.x,src.y+40,"#9aa3ad",12,"center");
+  // normalen en hoeken (bij één kleur)
+  const one=light>=0?R0:null;
+  if($("tN").checked){const show=one?one.angles:[R0.angles[0]];
+    ctx.setLineDash([7,6]);ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=1.6;
+    for(const a of show){line(add(a.p,mul(a.nrm,70)),sub(a.p,mul(a.nrm,70)))}ctx.setLineDash([])}
+  if($("tA").checked){
+    const a0=R0.angles[0];label(`i = ${fmt(a0.i,1)}°`,a0.p.x-14,a0.p.y+38,"#fff",15,"right");
+    if(one){label(`r = ${fmt(a0.r,1)}°`,a0.p.x+16,a0.p.y+44,"#fff",15,"left");
+      const a1=one.angles[one.angles.length-1];
+      if(a1&&a1!==a0){label(a1.tir?`${fmt(a1.i,1)}°: totale terugkaatsing`:`${fmt(a1.i,1)}° → ${fmt(a1.r,1)}°`,a1.p.x+14,a1.p.y-14,"#fff",15,"left")}}}
+  // kleuren benoemen op het scherm
+  if($("tL").checked){ // namen in een kolom naast het scherm, met een lijntje naar de plek op het scherm
+    const named=(light<0?COLORS:[COLORS[light]]).map(c=>({c,r:trace(c.l,ai)})).filter(o=>o.r.hitScreen).sort((a,b)=>a.r.hitScreen.y-b.r.hitScreen.y);
+    if(named.length){const gap=20,mid=named.reduce((t,o)=>t+o.r.hitScreen.y,0)/named.length;
+      let y0=Math.max(30,Math.min(H-30-gap*(named.length-1),mid-gap*(named.length-1)/2));
+      named.forEach((o,i)=>{const y=y0+i*gap,hy=o.r.hitScreen.y;
+        ctx.strokeStyle=css(o.c.l,.8);ctx.lineWidth=1.2;line(v(SX+16,hy),v(SX+52,y));
+        label(o.c.n,SX+56,y+5,css(o.c.l),15,"left")})}}
+  if($("tX").checked)label("kleurschifting ×4 vergroot",SX-8,34,"#ffb3c0",13,"right");
+  readout(rays,ai);
+}
+function readout(rays,ai){
+  let h=`<span><small>Invalshoek</small><span class="mid">i = ${fmt(ai,1)}°</span></span>`;
+  if(light>=0){const r=rays[0],c=COLORS[light];
+    h=`<span><small>${c.n} licht (${c.l} nm)</small><span class="big">n = ${fmt(r.n,4)}</span></span>`+h;
+    h+=r.dev!=null?`<span><small>Afwijkingshoek</small><span class="mid">δ = ${fmt(r.dev,1)}°</span></span>`:`<span class="warn">Totale terugkaatsing: het licht komt niet uit het prisma</span>`;}
+  else{const rr=trace(700,ai),rv=trace(400,ai);
+    h=`<span><small>Wit licht</small><span class="mid">alle kleuren samen</span></span>`+h;
+    if(rr.dev!=null&&rv.dev!=null)h+=`<span><small>Afwijkingshoek rood / violet</small><span class="mid">${fmt(rr.dev,1)}° / ${fmt(rv.dev,1)}°</span></span><span><small>Violet wordt het sterkst gebroken</small></span>`;
+    else h+=`<span class="warn">Een deel van het licht wordt totaal teruggekaatst</span>`;}
+  $("read").innerHTML=h;$("aio").textContent=fmt(ai,1)+"°";
+  // tabel
+  $("tblwrap").hidden=!$("tT").checked;$("tbltitle").textContent="Brekingsindex per kleur: "+MATS[mat].n.toLowerCase();
+  $("tb").innerHTML=COLORS.map((c,i)=>{const r=trace(c.l,ai);return `<tr class="${i==light?"cur":""}"><td><i style="background:${css(c.l)}"></i>${c.n}</td><td>${c.l}</td><td>${fmt(r.n,4)}</td><td>${r.dev!=null?fmt(r.dev,1):"–"}</td></tr>`}).join("");
+  document.querySelectorAll("[data-l]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.l==light));
+  document.querySelectorAll("[data-m]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.m==mat));
+  document.querySelectorAll("[data-t]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.t==top));
+}
+// ---------- bediening ----------
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+  if(d.l!=null)light=+d.l;else if(d.m!=null)mat=+d.m;else if(d.t!=null)top=+d.t;else return;draw()});
+document.querySelectorAll(".panel input").forEach(i=>i.addEventListener("input",draw));
+// lichtbron slepen: de invalshoek volgt de muis
+let drag=false;
+const toWorld=e=>{const r=cv.getBoundingClientRect();return v((e.clientX-r.left-view.ox)/view.s,(e.clientY-r.top-view.oy)/view.s)};
+function aimAt(q){const P=prism(),E=v((P[0].x+P[1].x)/2,(P[0].y+P[1].y)/2),ni=mul(outNormal(P,0),-1),d=unit(sub(E,q));
+  const a=-deg(Math.atan2(cross(ni,d),dot(ni,d)));$("ai").value=Math.max(0,Math.min(85,Math.round(a*2)/2));draw()}
+cv.addEventListener("pointerdown",e=>{const q=toWorld(e),R=trace(500,+$("ai").value);
+  if(len(sub(q,R.src))<70||q.x<prism()[1].x-60){drag=true;cv.setPointerCapture(e.pointerId);aimAt(q)}});
+cv.addEventListener("pointermove",e=>{const q=toWorld(e);
+  if(drag){aimAt(q);return}const R=trace(500,+$("ai").value);cv.style.cursor=len(sub(q,R.src))<70?"grab":"default"});
+["pointerup","pointercancel"].forEach(t=>cv.addEventListener(t,()=>drag=false));
+new ResizeObserver(resize).observe($("stage"));
+document.fonts&&document.fonts.ready.then(draw);
+resize();
+}
+</script>
+</body>
+</html>
