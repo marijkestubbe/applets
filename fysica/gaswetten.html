@@ -153,6 +153,7 @@ $("gases").innerHTML=GASES.map((g,i)=>`<button data-gas="${i}" aria-pressed="${i
 // ---------- tekening ----------
 const W=700,H=620,CX0=200,CX1=380,BOTY=560,PX=1.45; // 1,45 eenheden per ml
 const yPiston=v=>BOTY-v*PX;
+const NY0=528,NY1=402,nY=v=>NY0-(v-.002)/.014*(NY0-NY1),nAt=y=>.002+(NY0-y)/(NY0-NY1)*.014; // schuifknop voor n
 const cv=$("cv"),ctx=cv.getContext("2d");let view={s:1,ox:0,oy:0,dpr:1};
 function resize(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);
   const s=Math.min(r.width/W,r.height/H);view={s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2,dpr}}
@@ -199,9 +200,16 @@ function draw(){
     if(MODES[mode].V)txt("sleep ↕",cx+52,yp-80,12,"#5d636b","left",400)}
   if(mode=="reg"){ctx.fillStyle="#e4002b";ctx.fillRect(CX0-22,yp-30,20,8);ctx.fillRect(CX1+2,yp-30,20,8);txt("vast",CX1+26,yp-22,12,"#e4002b","left")}
   // gasfles (molaire gaswet)
-  if(mode=="mol"){ctx.fillStyle=g.c;ctx.beginPath();ctx.roundRect(60,420,60,130,14);ctx.fill();ctx.fillStyle="#3a3f45";ctx.fillRect(80,402,20,20);
-    ctx.strokeStyle="#7d8a94";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(90,402);ctx.lineTo(90,380);ctx.lineTo(150,380);ctx.lineTo(150,540);ctx.lineTo(CX0-5,540);ctx.stroke();
-    ctx.fillStyle="#e4002b";ctx.beginPath();ctx.arc(150,460,9,0,7);ctx.fill();txt("kraan",164,464,12,"#5d636b","left",400);txt(g.f,90,490,18,"#fff","center")}
+  if(mode=="mol"){const KX=100; // gasfles links, schuifknop ertussen, leiding naar de cilinder
+    ctx.fillStyle=g.c;ctx.beginPath();ctx.roundRect(6,420,52,130,14);ctx.fill();ctx.fillStyle="#3a3f45";ctx.fillRect(22,402,20,20);txt(g.f,32,490,17,"#fff","center");
+    ctx.strokeStyle="#7d8a94";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(32,402);ctx.lineTo(32,372);ctx.lineTo(KX,372);ctx.moveTo(KX,NY0+14);ctx.lineTo(KX,546);ctx.lineTo(CX0-5,546);ctx.stroke();
+    // schuifknop voor de hoeveelheid gas: omhoog = gas bijpompen, omlaag = gas laten ontsnappen
+    ctx.fillStyle="rgba(255,255,255,.9)";ctx.beginPath();ctx.roundRect(KX-10,NY1-14,20,NY0-NY1+28,10);ctx.fill();ctx.strokeStyle="#5d636b";ctx.lineWidth=1;ctx.stroke();
+    for(let v=.002;v<=.0161;v+=.002){const y=nY(v);ctx.strokeStyle="#5d636b";ctx.beginPath();ctx.moveTo(KX+10,y);ctx.lineTo(KX+16,y);ctx.stroke()}
+    const ky=nY(n);ctx.fillStyle="#e4002b";ctx.beginPath();ctx.arc(KX,ky,11,0,7);ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.92)";ctx.beginPath();ctx.roundRect(KX-48,300,96,40,6);ctx.fill();
+    txt(`n = ${fmt(n,3)} mol`,KX,318,13,"#15171a","center");txt("sleep ↕",KX,334,11,"#5d636b","center",400);
+    txt("meer gas",KX,NY1-20,11,"#15171a","center");txt("minder gas",KX,NY0+30,11,"#15171a","center")}
   // thermometer
   const TX=470,Ty=t=>545-(t+40)/160*380;
   ctx.fillStyle="#fff";ctx.strokeStyle="#7d8a94";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(TX-9,145,18,410,9);ctx.fill();ctx.stroke();
@@ -333,14 +341,17 @@ const toW=e=>{const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left-vie
 const TX=470,thAt=y=>(545-y)*160/380-40; // thermometerschaal: y → °C
 const onPiston=q=>{const yp=yPiston(Vshow);return MODES[mode].V&&q.x>CX0-30&&q.x<CX1+30&&q.y>yp-100&&q.y<yp+10};
 const onThermo=q=>MODES[mode].T&&q.x>TX-28&&q.x<TX+50&&q.y>120&&q.y<585;
+const onN=q=>mode=="mol"&&q.x>78&&q.x<122&&q.y>NY1-24&&q.y<NY0+24;
+function setN(v){n=Math.max(.002,Math.min(.016,Math.round(v*1000)/1000));$("sN").value=n;reNoise();readout()}
 cv.addEventListener("pointerdown",e=>{const q=toW(e);
-  if(onPiston(q))drag={k:"V",y:q.y,V:V};else if(onThermo(q)){drag={k:"T"};setTheta(thAt(q.y))}else return;
+  if(onPiston(q))drag={k:"V",y:q.y,V:V};else if(onThermo(q)){drag={k:"T"};setTheta(thAt(q.y))}else if(onN(q)){drag={k:"N"};setN(nAt(q.y))}else return;
   cv.setPointerCapture(e.pointerId)});
 function setTheta(t){theta=Math.max(-40,Math.min(120,Math.round(t)));$("sT").value=theta;reNoise();readout()}
 cv.addEventListener("pointermove",e=>{const q=toW(e);
   if(drag&&drag.k=="V"){V=Vshow=Math.max(50,Math.min(300,Math.round(drag.V-(q.y-drag.y)/PX)));reNoise();readout();return}
   if(drag&&drag.k=="T"){setTheta(thAt(q.y));return}
-  cv.style.cursor=onPiston(q)||onThermo(q)?"ns-resize":"default"});
+  if(drag&&drag.k=="N"){setN(nAt(q.y));return}
+  cv.style.cursor=onPiston(q)||onThermo(q)||onN(q)?"ns-resize":"default"});
 ["pointerup","pointercancel"].forEach(t=>cv.addEventListener(t,()=>drag=null));
 new ResizeObserver(resize).observe($("stage"));resize();
 setMode("boyle");requestAnimationFrame(loop);
