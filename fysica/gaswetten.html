@@ -119,7 +119,7 @@ const R=8.314,T0=273.15; // J·mol⁻¹·K⁻¹; 0 °C in kelvin
 const $=id=>document.getElementById(id);
 const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
 const GASES=[{n:"Helium",f:"He",M:4,c:"#f2a541",r:4},{n:"Stikstof",f:"N₂",M:28,c:"#4f86d9",r:5.5},{n:"Koolstofdioxide",f:"CO₂",M:44,c:"#6b7680",r:6.5}];
-const N0=0.008; // mol: zo is p ≈ 100 kPa bij 200 mL en 20 °C
+const N0=0.008; // mol: zo is p ≈ 100 kPa bij 200 ml en 20 °C
 const MODES={
  boyle:{t:"Wet van Boyle-Mariotte",c:"T en n",V:1,T:0,N:0,
    hint:"Sleep de zuiger omhoog of omlaag (of gebruik het schuifje). De temperatuur blijft gelijk.",
@@ -151,7 +151,7 @@ $("modes").innerHTML=Object.entries(MODES).map(([k,m])=>`<button data-mode="${k}
 $("gases").innerHTML=GASES.map((g,i)=>`<button data-gas="${i}" aria-pressed="${i==gas}">${g.n} (${g.f})</button>`).join("");
 
 // ---------- tekening ----------
-const W=700,H=620,CX0=200,CX1=380,BOTY=560,PX=1.45; // 1,45 eenheden per mL
+const W=700,H=620,CX0=200,CX1=380,BOTY=560,PX=1.45; // 1,45 eenheden per ml
 const yPiston=v=>BOTY-v*PX;
 const cv=$("cv"),ctx=cv.getContext("2d");let view={s:1,ox:0,oy:0,dpr:1};
 function resize(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);
@@ -187,10 +187,10 @@ function draw(){
   if($("tP").checked){ctx.fillStyle=g.c;for(const q of parts){ctx.beginPath();ctx.arc(q.x,q.y,g.r,0,7);ctx.fill()}}
   // cilinderwand
   ctx.strokeStyle="#6b7680";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(CX0-3,60);ctx.lineTo(CX0-3,BOTY+3);ctx.lineTo(CX1+3,BOTY+3);ctx.lineTo(CX1+3,60);ctx.stroke();
-  // maatverdeling (mL)
+  // maatverdeling (ml)
   for(let v=0;v<=300;v+=10){const y=yPiston(v),maj=v%50==0;ctx.strokeStyle="#15171a";ctx.lineWidth=maj?1.6:.8;ctx.beginPath();ctx.moveTo(CX0-6,y);ctx.lineTo(CX0-(maj?22:13),y);ctx.stroke();
     if(maj)txt(String(v),CX0-26,y+4,12,"#15171a","right")}
-  txt("mL",CX0-26,yPiston(300)-14,12,"#15171a","right");
+  txt("ml",CX0-26,yPiston(300)-14,12,"#15171a","right");
   // zuiger
   ctx.fillStyle="#3a3f45";ctx.fillRect(CX0,yp-16,CX1-CX0,16);
   const cx=(CX0+CX1)/2;
@@ -235,10 +235,10 @@ function readout(){
   const m=meas(),M=MODES[mode];
   const fx=k=>(mode=="boyle"&&k=="T")||(mode=="gay"&&k=="p")||(mode=="reg"&&k=="V")?" fixed":"";
   $("read").innerHTML=`<span><small>Druk</small><span class="big${fx("p")}">p = ${fmt(m.p,1)} kPa</span></span>
-   <span><small>Volume</small><span class="mid${fx("V")}">V = ${fmt(m.V,1)} mL</span></span>
+   <span><small>Volume</small><span class="mid${fx("V")}">V = ${fmt(m.V,1)} ml</span></span>
    <span><small>Temperatuur</small><span class="mid${fx("T")}">${thTxt(m.th)}</span></span>
    <span><small>Hoeveelheid gas</small><span class="mid${mode=="mol"?"":" fixed"}">n = ${fmt(n,3)} mol</span></span>`;
-  $("oV").textContent=fmt(Vshow,0)+" mL";$("sV").value=Vshow;
+  $("oV").textContent=fmt(Vshow,0)+" ml";$("sV").value=Vshow;
   $("oT").textContent=$("tK").checked?`${fmt(theta+T0,0)} K (${theta} °C)`:`${theta} °C (${fmt(theta+T0,0)} K)`;
   $("oN").textContent=fmt(n,3)+" mol";
 }
@@ -247,11 +247,11 @@ function readout(){
 const thCol=()=>$("tK").checked?["T (K)",r=>r.th+T0,1]:["θ (°C)",r=>r.th,1];
 const TK=r=>r.th+T0;
 const COLS={
- boyle:()=>[["p (kPa)",r=>r.p,1],["V (mL)",r=>r.V,1],["p · V (J)",r=>r.p*r.V/1000,2,1]],
- gay:()=>[thCol(),["V (mL)",r=>r.V,1],["V / T (mL/K)",r=>r.V/TK(r),4,1]],
+ boyle:()=>[["p (kPa)",r=>r.p,1],["V (ml)",r=>r.V,1],["p · V (J)",r=>r.p*r.V/1000,2,1]],
+ gay:()=>[thCol(),["V (ml)",r=>r.V,1],["V / T (ml/K)",r=>r.V/TK(r),4,1]],
  reg:()=>[thCol(),["p (kPa)",r=>r.p,1],["p / T (kPa/K)",r=>r.p/TK(r),4,1]],
- alg:()=>[["p (kPa)",r=>r.p,1],["V (mL)",r=>r.V,1],thCol(),["p · V / T (J/K)",r=>r.p*r.V/1000/TK(r),4,1]],
- mol:()=>[["gas",r=>r.g,null],["n (mol)",r=>r.n,3],["p (kPa)",r=>r.p,1],["V (mL)",r=>r.V,1],thCol(),["p · V / (n · T) (J·mol⁻¹·K⁻¹)",r=>r.p*r.V/1000/(r.n*TK(r)),3,1]]
+ alg:()=>[["p (kPa)",r=>r.p,1],["V (ml)",r=>r.V,1],thCol(),["p · V / T (J/K)",r=>r.p*r.V/1000/TK(r),4,1]],
+ mol:()=>[["gas",r=>r.g,null],["n (mol)",r=>r.n,3],["p (kPa)",r=>r.p,1],["V (ml)",r=>r.V,1],thCol(),["p · V / (n · T) (J·mol⁻¹·K⁻¹)",r=>r.p*r.V/1000/(r.n*TK(r)),3,1]]
 };
 function renderTable(){
   const cols=COLS[mode]();
@@ -267,8 +267,8 @@ function linfit(P){const k=P.length,sx=P.reduce((a,q)=>a+q[0],0),sy=P.reduce((a,
   const d=k*sxx-sx*sx;if(k<2||Math.abs(d)<1e-12)return null;const b=(k*sxy-sx*sy)/d;return {a:(sy-b*sx)/k,b}}
 function chartCfg(){
   const K=$("tK").checked;
-  if(mode=="boyle")return graphKind==0?{x:"V (mL)",y:"p (kPa)",f:r=>[r.V,r.p],kind:"hyp",x0:0}:{x:"1/V (1/mL)",y:"p (kPa)",f:r=>[1/r.V,r.p],kind:"orig",x0:0};
-  if(mode=="gay")return K?{x:"T (K)",y:"V (mL)",f:r=>[TK(r),r.V],kind:"orig",x0:0}:{x:"θ (°C)",y:"V (mL)",f:r=>[r.th,r.V],kind:"ext",x0:-300};
+  if(mode=="boyle")return graphKind==0?{x:"V (ml)",y:"p (kPa)",f:r=>[r.V,r.p],kind:"hyp",x0:0}:{x:"1/V (1/ml)",y:"p (kPa)",f:r=>[1/r.V,r.p],kind:"orig",x0:0};
+  if(mode=="gay")return K?{x:"T (K)",y:"V (ml)",f:r=>[TK(r),r.V],kind:"orig",x0:0}:{x:"θ (°C)",y:"V (ml)",f:r=>[r.th,r.V],kind:"ext",x0:-300};
   if(mode=="reg")return K?{x:"T (K)",y:"p (kPa)",f:r=>[TK(r),r.p],kind:"orig",x0:0}:{x:"θ (°C)",y:"p (kPa)",f:r=>[r.th,r.p],kind:"ext",x0:-300};
   if(mode=="alg")return {x:"T (K)",y:"p · V (J)",f:r=>[TK(r),r.p*r.V/1000],kind:"orig",x0:0};
   return {x:"n · T (mol·K)",y:"p · V (J)",f:r=>[r.n*TK(r),r.p*r.V/1000],kind:"orig",x0:0,slope:"R"};
@@ -303,7 +303,7 @@ function renderChart(){
 function setMode(m){mode=m;const M=MODES[m];
   document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode==m));
   $("mtitle").textContent=M.t;$("mconst").textContent=M.c?"constant: "+M.c:"p, V, T en n veranderen";$("hint").textContent=M.hint;$("formula").innerHTML=M.form;
-  // elke wet start vanuit dezelfde begintoestand: 200 mL, 20 °C, 0,008 mol
+  // elke wet start vanuit dezelfde begintoestand: 200 ml, 20 °C, 0,008 mol
   n=N0;$("sN").value=N0;theta=20;$("sT").value=20;V=Vshow=200;pFix=pOf(n,200,T());
   $("sV").disabled=!M.V;$("sT").disabled=!M.T;
   $("lV").textContent=M.V?"":m=="gay"?"Het volume verandert vanzelf: de zuiger schuift mee.":"Het volume blijft constant: de zuiger zit vast.";
