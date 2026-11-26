@@ -211,6 +211,7 @@ function draw(){
   for(let t=-40;t<=120;t+=10){const y=Ty(t),maj=t%20==0;ctx.strokeStyle="#15171a";ctx.lineWidth=maj?1.4:.7;ctx.beginPath();ctx.moveTo(TX+10,y);ctx.lineTo(TX+(maj?22:16),y);ctx.stroke();
     if(maj)txt(K?fmt(t+T0,0):String(t),TX+26,y+4,12,"#15171a","left")}
   txt(K?"K":"°C",TX+26,135,13,"#15171a","left");
+  if(MODES[mode].T)txt("sleep ↕",TX-14,135,12,"#5d636b","right",400);
   ctx.strokeStyle="#7d8a94";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(TX-16,560);ctx.lineTo(CX1+3,560);ctx.stroke();
   // manometer
   const MX=600,MY=200,MR=58,pm=Math.min(400,m.p),ang=(-130+260*pm/400)*Math.PI/180;
@@ -328,10 +329,18 @@ $("graph").onclick=()=>{const show=$("chart").hidden;$("chart").hidden=!show;$("
 // zuiger slepen (als het volume mag veranderen)
 let drag=null;
 const toW=e=>{const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left-view.ox)/view.s,y:(e.clientY-r.top-view.oy)/view.s}};
-cv.addEventListener("pointerdown",e=>{if(!MODES[mode].V)return;const q=toW(e),yp=yPiston(Vshow);
-  if(q.x>CX0-30&&q.x<CX1+30&&q.y>yp-100&&q.y<yp+10){drag={y:q.y,V:V};cv.setPointerCapture(e.pointerId)}});
-cv.addEventListener("pointermove",e=>{const q=toW(e);if(drag){V=Vshow=Math.max(50,Math.min(300,Math.round(drag.V-(q.y-drag.y)/PX)));reNoise();readout();return}
-  const yp=yPiston(Vshow);cv.style.cursor=MODES[mode].V&&q.x>CX0-30&&q.x<CX1+30&&q.y>yp-100&&q.y<yp+10?"ns-resize":"default"});
+// slepen op de tekening: de zuiger (volume) of de thermometer (temperatuur)
+const TX=470,thAt=y=>(545-y)*160/380-40; // thermometerschaal: y → °C
+const onPiston=q=>{const yp=yPiston(Vshow);return MODES[mode].V&&q.x>CX0-30&&q.x<CX1+30&&q.y>yp-100&&q.y<yp+10};
+const onThermo=q=>MODES[mode].T&&q.x>TX-28&&q.x<TX+50&&q.y>120&&q.y<585;
+cv.addEventListener("pointerdown",e=>{const q=toW(e);
+  if(onPiston(q))drag={k:"V",y:q.y,V:V};else if(onThermo(q)){drag={k:"T"};setTheta(thAt(q.y))}else return;
+  cv.setPointerCapture(e.pointerId)});
+function setTheta(t){theta=Math.max(-40,Math.min(120,Math.round(t)));$("sT").value=theta;reNoise();readout()}
+cv.addEventListener("pointermove",e=>{const q=toW(e);
+  if(drag&&drag.k=="V"){V=Vshow=Math.max(50,Math.min(300,Math.round(drag.V-(q.y-drag.y)/PX)));reNoise();readout();return}
+  if(drag&&drag.k=="T"){setTheta(thAt(q.y));return}
+  cv.style.cursor=onPiston(q)||onThermo(q)?"ns-resize":"default"});
 ["pointerup","pointercancel"].forEach(t=>cv.addEventListener(t,()=>drag=null));
 new ResizeObserver(resize).observe($("stage"));resize();
 setMode("boyle");requestAnimationFrame(loop);
