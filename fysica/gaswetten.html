@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gaswetten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: helder klaslabo, groot leesbaar op een beamer
+IDEA: een afgesloten cilinder met zuiger, bewegende gasdeeltjes, manometer en thermometer; per gaswet ligt één grootheid vast
+LAYOUT: scène links, bediening rechts; onder 760px gestapeld (zelfde opbouw als de andere applets)
+*/
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121417);--ink:light-dark(#15171a,#eef0f2);--mut:light-dark(#5d636b,#a3a9b1);--line:light-dark(#dde1e6,#2d3238);--card:light-dark(#f4f6f8,#1b1e22);--red:#e4002b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;overflow-x:clip}
+.app{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);min-height:100vh}
+.scene{display:flex;flex-direction:column;background:linear-gradient(#eef3f6,#dde6ec);min-height:620px}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 0}
+.box{background:rgba(255,255,255,.95);color:#15171a;border-radius:12px;padding:8px 14px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.place h1{margin:0;font-size:clamp(22px,3vw,34px);line-height:1.1}
+.place p{margin:6px 0 0;font-size:15px}
+.const{display:inline-block;background:#15171a;color:#fff;border-radius:6px;padding:2px 8px;font-weight:700;font-size:14px}
+.read{text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px}
+.read small{display:block;font-size:13px;color:#5d636b}
+.read .big{font-size:clamp(20px,2.6vw,28px);font-weight:700;white-space:nowrap}
+.read .mid{font-size:clamp(15px,1.8vw,19px);font-weight:700;white-space:nowrap}
+.read .fixed{color:#5d636b}
+.stage{position:relative;flex:1;min-height:440px}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.panel{padding:20px clamp(16px,2.5vw,32px);display:flex;flex-direction:column;gap:18px}
+.back{color:var(--mut);font-size:14px;text-decoration:none}.back:hover{color:var(--ink);text-decoration:underline}
+h2{font-size:17px;margin:0 0 8px}
+.chips,.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
+.sl label{font-weight:700}
+.sl output{font-variant-numeric:tabular-nums;color:var(--mut)}
+.sl input{grid-column:1/-1;width:100%;accent-color:var(--red);height:32px}
+.sl input:disabled{opacity:.35}
+.sl .lock{grid-column:1/-1;font-size:14px;color:var(--mut);margin-top:-4px}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+label.tg{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
+label.tg input{width:22px;height:22px;accent-color:var(--red)}
+.formula{font-size:20px;font-weight:700;background:var(--card);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.formula small{font-size:15px;font-weight:400}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:14px;color:var(--mut);font-weight:700}
+th.r,td.r{background:var(--card)}
+.noratio .r{display:none}
+.empty td{text-align:left;color:var(--mut);white-space:normal}
+.chart{background:var(--card);border-radius:10px;padding:10px 12px;margin-top:10px}
+.chart svg{display:block;width:100%;height:auto}
+.chart .ax{stroke:var(--ink);stroke-width:1.4}.chart .gl{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--ink);font:13px "Atkinson Hyperlegible",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.chart .tt{font-weight:700;font-size:14px}
+.chart .fit{stroke:var(--red);stroke-width:2.5;fill:none}
+.chart .ext{stroke:var(--red);stroke-width:2;stroke-dasharray:6 5;fill:none}
+.chart .pt{fill:var(--ink)}
+.chart .note{fill:var(--red);font-weight:700}
+@media(min-width:761px){.scene{position:sticky;top:0;height:100vh}}
+@media(max-width:760px){.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="scene" aria-label="Cilinder met gas, zuiger, manometer en thermometer">
+    <div class="hud">
+      <div class="box place"><h1 id="mtitle"></h1><p><span class="const" id="mconst"></span></p></div>
+      <div class="box read" id="read" aria-live="polite"></div>
+    </div>
+    <div class="stage" id="stage"><canvas id="cv"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <a class="back" href="../index.html">← Alle applets</a>
+    <div>
+      <h2>Welke gaswet?</h2>
+      <div class="chips" id="modes"></div>
+    </div>
+    <div class="sl" id="wrapV"><label for="sV">Volume V</label><output id="oV"></output><input type="range" id="sV" min="50" max="300" step="1" value="200"><span class="lock" id="lV"></span></div>
+    <div class="sl" id="wrapT"><label for="sT">Temperatuur</label><output id="oT"></output><input type="range" id="sT" min="-40" max="120" step="1" value="20"><span class="lock" id="lT"></span></div>
+    <div class="sl" id="wrapN"><label for="sN">Hoeveelheid gas n</label><output id="oN"></output><input type="range" id="sN" min="0.002" max="0.016" step="0.001" value="0.008"></div>
+    <div id="wrapGas"><h2>Welk gas?</h2><div class="chips" id="gases"></div></div>
+    <p class="hint" id="hint"></p>
+    <div class="row">
+      <label class="tg"><input type="checkbox" id="tK"> Temperatuur in kelvin</label>
+      <label class="tg"><input type="checkbox" id="tP" checked> Gasdeeltjes tonen</label>
+      <label class="tg"><input type="checkbox" id="tE"> Meetfouten</label>
+      <label class="tg"><input type="checkbox" id="tF"> Formule tonen</label>
+    </div>
+    <div class="formula" id="formula" hidden></div>
+    <div>
+      <h2>Meettabel</h2>
+      <div class="row" style="margin-bottom:8px">
+        <button id="note">Meting noteren</button><button id="clear">Tabel wissen</button>
+        <button id="graph" aria-pressed="false" aria-controls="chart">Toon grafiek</button>
+        <label class="tg"><input type="checkbox" id="tR" checked> <span id="tRl">Kolom met de verhouding tonen</span></label>
+      </div>
+      <div class="tblwrap"><table id="tbl"><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+      <div class="chart" id="chart" hidden>
+        <div class="row" id="gopts" style="margin-bottom:6px"></div>
+        <svg id="csvg" viewBox="0 0 520 330" role="img" aria-label="Grafiek van de metingen"></svg>
+        <p class="hint" id="gnote" style="margin:4px 0 0"></p>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+{
+const R=8.314,T0=273.15; // J·mol⁻¹·K⁻¹; 0 °C in kelvin
+const $=id=>document.getElementById(id);
+const fmt=(x,n=0)=>x.toLocaleString("nl-BE",{minimumFractionDigits:n,maximumFractionDigits:n,useGrouping:false});
+const GASES=[{n:"Helium",f:"He",M:4,c:"#f2a541",r:4},{n:"Stikstof",f:"N₂",M:28,c:"#4f86d9",r:5.5},{n:"Koolstofdioxide",f:"CO₂",M:44,c:"#6b7680",r:6.5}];
+const N0=0.008; // mol: zo is p ≈ 100 kPa bij 200 mL en 20 °C
+const MODES={
+ boyle:{t:"Wet van Boyle-Mariotte",c:"T en n",V:1,T:0,N:0,
+   hint:"Sleep de zuiger omhoog of omlaag (of gebruik het schuifje). De temperatuur blijft gelijk.",
+   form:`<span>p · V = constant</span><small>p₁ · V₁ = p₂ · V₂ (bij constante T en n)</small>`},
+ gay:{t:"Wet van Gay-Lussac",c:"p en n",V:0,T:1,N:0,
+   hint:"Verwarm of koel het gas. Er staat een gewicht op de zuiger: de druk blijft gelijk, de zuiger schuift mee.",
+   form:`<span>V / T = constant</span><small>V₁ / T₁ = V₂ / T₂ (bij constante p en n, T in kelvin)</small>`},
+ reg:{t:"Wet van Regnault",c:"V en n",V:0,T:1,N:0,
+   hint:"Verwarm of koel het gas. De zuiger zit vast: het volume blijft gelijk.",
+   form:`<span>p / T = constant</span><small>p₁ / T₁ = p₂ / T₂ (bij constant V en n, T in kelvin)</small>`},
+ alg:{t:"Algemene gaswet",c:"n",V:1,T:1,N:0,
+   hint:"Verander zowel het volume als de temperatuur.",
+   form:`<span>p · V / T = constant</span><small>p₁ · V₁ / T₁ = p₂ · V₂ / T₂ (bij constante n)</small>`},
+ mol:{t:"Molaire gaswet",c:"",V:1,T:1,N:1,
+   hint:"Pomp gas bij of laat gas ontsnappen, en verander het volume en de temperatuur. Kies ook een ander gas.",
+   form:`<span>p · V = n · R · T</span><small>R = 8,314 J·mol⁻¹·K⁻¹ (p in Pa, V in m³, T in K)</small>`}
+};
+let mode="boyle",gas=1,n=N0,V=200,theta=20,Vshow=200,pFix=0,rows=[],graphKind=0;
+const T=()=>theta+T0;
+const pOf=(n,V,TK)=>n*R*TK/(V*1e-6)/1000; // kPa
+const p=()=>mode=="gay"?pFix:pOf(n,V,T());
+// meetfouten: kleine afwijkingen, opnieuw getrokken bij elke verandering
+const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+let noise={p:1,V:0,T:0};
+const reNoise=()=>{noise=$("tE").checked?{p:1+gauss()*.006,V:gauss()*.8,T:gauss()*.3}:{p:1,V:0,T:0}};
+const meas=()=>({p:p()*noise.p,V:Vshow+noise.V,th:theta+noise.T,n});
+
+$("modes").innerHTML=Object.entries(MODES).map(([k,m])=>`<button data-mode="${k}" aria-pressed="${k==mode}">${m.t.replace("Wet van ","")}</button>`).join("");
+$("gases").innerHTML=GASES.map((g,i)=>`<button data-gas="${i}" aria-pressed="${i==gas}">${g.n} (${g.f})</button>`).join("");
+
+// ---------- tekening ----------
+const W=700,H=620,CX0=200,CX1=380,BOTY=560,PX=1.45; // 1,45 eenheden per mL
+const yPiston=v=>BOTY-v*PX;
+const cv=$("cv"),ctx=cv.getContext("2d");let view={s:1,ox:0,oy:0,dpr:1};
+function resize(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);
+  const s=Math.min(r.width/W,r.height/H);view={s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2,dpr}}
+const txt=(t,x,y,size=13,c="#15171a",al="left",w=700)=>{ctx.font=`${w} ${size}px "Atkinson Hyperlegible",system-ui,sans-serif`;ctx.textAlign=al;ctx.fillStyle=c;ctx.fillText(t,x,y)};
+// deeltjes
+let parts=[];
+function syncParticles(){const want=Math.max(6,Math.min(170,Math.round(60*n/N0)));const top=yPiston(Vshow)+8;
+  while(parts.length<want){const a=Math.random()*Math.PI*2;parts.push({x:CX0+10+Math.random()*(CX1-CX0-20),y:top+Math.random()*(BOTY-top-10),a})}
+  parts.length=want}
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function step(){
+  const g=GASES[gas],top=yPiston(Vshow),sp=Math.min(7,1.6*Math.sqrt(T()/293)*Math.sqrt(28/g.M)),r=g.r;
+  for(const q of parts){if(!reduce){q.x+=Math.cos(q.a)*sp;q.y+=Math.sin(q.a)*sp}
+    if(q.x<CX0+r){q.x=CX0+r;q.a=Math.PI-q.a}if(q.x>CX1-r){q.x=CX1-r;q.a=Math.PI-q.a}
+    if(q.y<top+r){q.y=top+r;q.a=-q.a}if(q.y>BOTY-r){q.y=BOTY-r;q.a=-q.a}}
+}
+function draw(){
+  const {s,ox,oy,dpr}=view;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(s*dpr,0,0,s*dpr,ox*dpr,oy*dpr);
+  const m=meas(),yp=yPiston(Vshow),g=GASES[gas];
+  // tafel
+  ctx.fillStyle="#c9cfd4";ctx.fillRect(-300,600,W+600,100);
+  // verwarming of koeling onder de cilinder
+  if(theta>22){const k=Math.min(6,Math.ceil((theta-20)/20));for(let i=0;i<k+2;i++){const x=CX0+20+i*(CX1-CX0-40)/(k+1),h=14+(theta-20)/5;
+    ctx.fillStyle="rgba(255,140,0,.85)";ctx.beginPath();ctx.moveTo(x-9,594);ctx.quadraticCurveTo(x-6,594-h*.6,x,594-h);ctx.quadraticCurveTo(x+6,594-h*.6,x+9,594);ctx.fill();
+    ctx.fillStyle="rgba(255,220,0,.9)";ctx.beginPath();ctx.moveTo(x-4,594);ctx.quadraticCurveTo(x,594-h*.5,x+4,594);ctx.fill()}
+    ctx.fillStyle="#2c3036";ctx.fillRect(CX0+10,594,CX1-CX0-20,8);txt("verwarmen",(CX0+CX1)/2,616,12,"#5d636b","center",700)}
+  else if(theta<18){ctx.fillStyle="rgba(150,200,255,.55)";ctx.fillRect(CX0-30,BOTY-60,CX1-CX0+60,104);ctx.strokeStyle="#7fb0e6";ctx.lineWidth=2;ctx.strokeRect(CX0-30,BOTY-60,CX1-CX0+60,104);
+    for(let i=0;i<7;i++){ctx.fillStyle="rgba(255,255,255,.85)";ctx.fillRect(CX0-22+i*34,BOTY+10+(i%2)*14,20,14)}
+    txt(theta<0?"koelbad":"ijsbad",(CX0+CX1)/2,616,12,"#3a6ea8","center",700)}
+  // gas in de cilinder
+  ctx.fillStyle="rgba(180,215,245,.45)";ctx.fillRect(CX0,yp,CX1-CX0,BOTY-yp);
+  if($("tP").checked){ctx.fillStyle=g.c;for(const q of parts){ctx.beginPath();ctx.arc(q.x,q.y,g.r,0,7);ctx.fill()}}
+  // cilinderwand
+  ctx.strokeStyle="#6b7680";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(CX0-3,60);ctx.lineTo(CX0-3,BOTY+3);ctx.lineTo(CX1+3,BOTY+3);ctx.lineTo(CX1+3,60);ctx.stroke();
+  // maatverdeling (mL)
+  for(let v=0;v<=300;v+=10){const y=yPiston(v),maj=v%50==0;ctx.strokeStyle="#15171a";ctx.lineWidth=maj?1.6:.8;ctx.beginPath();ctx.moveTo(CX0-6,y);ctx.lineTo(CX0-(maj?22:13),y);ctx.stroke();
+    if(maj)txt(String(v),CX0-26,y+4,12,"#15171a","right")}
+  txt("mL",CX0-26,yPiston(300)-14,12,"#15171a","right");
+  // zuiger
+  ctx.fillStyle="#3a3f45";ctx.fillRect(CX0,yp-16,CX1-CX0,16);
+  const cx=(CX0+CX1)/2;
+  if(mode=="gay"){ctx.fillStyle="#6b7680";ctx.fillRect(cx-45,yp-66,90,50);ctx.strokeStyle="#3b3f44";ctx.lineWidth=2;ctx.strokeRect(cx-45,yp-66,90,50);txt("gewicht",cx,yp-36,13,"#fff","center")}
+  else{ctx.fillStyle="#5d6a74";ctx.fillRect(cx-4,yp-80,8,64);ctx.fillStyle="#2c3036";ctx.beginPath();ctx.roundRect(cx-45,yp-90,90,12,4);ctx.fill();
+    if(MODES[mode].V)txt("sleep ↕",cx+52,yp-80,12,"#5d636b","left",400)}
+  if(mode=="reg"){ctx.fillStyle="#e4002b";ctx.fillRect(CX0-22,yp-30,20,8);ctx.fillRect(CX1+2,yp-30,20,8);txt("vast",CX1+26,yp-22,12,"#e4002b","left")}
+  // gasfles (molaire gaswet)
+  if(mode=="mol"){ctx.fillStyle=g.c;ctx.beginPath();ctx.roundRect(60,420,60,130,14);ctx.fill();ctx.fillStyle="#3a3f45";ctx.fillRect(80,402,20,20);
+    ctx.strokeStyle="#7d8a94";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(90,402);ctx.lineTo(90,380);ctx.lineTo(150,380);ctx.lineTo(150,540);ctx.lineTo(CX0-5,540);ctx.stroke();
+    ctx.fillStyle="#e4002b";ctx.beginPath();ctx.arc(150,460,9,0,7);ctx.fill();txt("kraan",164,464,12,"#5d636b","left",400);txt(g.f,90,490,18,"#fff","center")}
+  // thermometer
+  const TX=470,Ty=t=>545-(t+40)/160*380;
+  ctx.fillStyle="#fff";ctx.strokeStyle="#7d8a94";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(TX-9,145,18,410,9);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(TX,565,16,0,7);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#e4002b";ctx.beginPath();ctx.arc(TX,565,11,0,7);ctx.fill();ctx.fillRect(TX-4,Ty(m.th),8,565-Ty(m.th));
+  const K=$("tK").checked;
+  for(let t=-40;t<=120;t+=10){const y=Ty(t),maj=t%20==0;ctx.strokeStyle="#15171a";ctx.lineWidth=maj?1.4:.7;ctx.beginPath();ctx.moveTo(TX+10,y);ctx.lineTo(TX+(maj?22:16),y);ctx.stroke();
+    if(maj)txt(K?fmt(t+T0,0):String(t),TX+26,y+4,12,"#15171a","left")}
+  txt(K?"K":"°C",TX+26,135,13,"#15171a","left");
+  ctx.strokeStyle="#7d8a94";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(TX-16,560);ctx.lineTo(CX1+3,560);ctx.stroke();
+  // manometer
+  const MX=600,MY=200,MR=58,pm=Math.min(400,m.p),ang=(-130+260*pm/400)*Math.PI/180;
+  ctx.strokeStyle="#7d8a94";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(CX1+3,520);ctx.lineTo(560,520);ctx.lineTo(560,300);ctx.lineTo(MX,300);ctx.lineTo(MX,MY+MR);ctx.stroke();
+  ctx.fillStyle="#2c3036";ctx.beginPath();ctx.arc(MX,MY,MR+6,0,7);ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(MX,MY,MR,0,7);ctx.fill();
+  for(let v=0;v<=400;v+=20){const a=(-130+260*v/400)*Math.PI/180,maj=v%100==0;ctx.strokeStyle="#15171a";ctx.lineWidth=maj?2:1;
+    ctx.beginPath();ctx.moveTo(MX+Math.sin(a)*(MR-(maj?14:8)),MY-Math.cos(a)*(MR-(maj?14:8)));ctx.lineTo(MX+Math.sin(a)*(MR-3),MY-Math.cos(a)*(MR-3));ctx.stroke();
+    if(maj)txt(String(v),MX+Math.sin(a)*(MR-26),MY-Math.cos(a)*(MR-26)+4,11,"#15171a","center")}
+  ctx.strokeStyle="#e4002b";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(MX,MY);ctx.lineTo(MX+Math.sin(ang)*(MR-8),MY-Math.cos(ang)*(MR-8));ctx.stroke();
+  ctx.fillStyle="#15171a";ctx.beginPath();ctx.arc(MX,MY,4,0,7);ctx.fill();txt("kPa",MX,MY+28,12,"#15171a","center");
+  txt("manometer",MX,MY-MR-14,13,"#15171a","center");
+}
+function loop(){
+  // bij Gay-Lussac schuift de zuiger rustig mee met de temperatuur
+  const target=mode=="gay"?Math.max(50,Math.min(300,n*R*T()/(pFix*1000)*1e6)):V;
+  if(Math.abs(target-Vshow)>.01){Vshow=reduce?target:Vshow+(target-Vshow)*.15;if(Math.abs(target-Vshow)<.05)Vshow=target;if(mode=="gay"){V=Vshow}readout()}
+  syncParticles();step();draw();requestAnimationFrame(loop)}
+
+// ---------- uitlezing ----------
+const thTxt=th=>$("tK").checked?`T = ${fmt(th+T0,1)} K`:`θ = ${fmt(th,1)} °C`;
+function readout(){
+  const m=meas(),M=MODES[mode];
+  const fx=k=>(mode=="boyle"&&k=="T")||(mode=="gay"&&k=="p")||(mode=="reg"&&k=="V")?" fixed":"";
+  $("read").innerHTML=`<span><small>Druk</small><span class="big${fx("p")}">p = ${fmt(m.p,1)} kPa</span></span>
+   <span><small>Volume</small><span class="mid${fx("V")}">V = ${fmt(m.V,1)} mL</span></span>
+   <span><small>Temperatuur</small><span class="mid${fx("T")}">${thTxt(m.th)}</span></span>
+   <span><small>Hoeveelheid gas</small><span class="mid${mode=="mol"?"":" fixed"}">n = ${fmt(n,3)} mol</span></span>`;
+  $("oV").textContent=fmt(Vshow,0)+" mL";$("sV").value=Vshow;
+  $("oT").textContent=$("tK").checked?`${fmt(theta+T0,0)} K (${theta} °C)`:`${theta} °C (${fmt(theta+T0,0)} K)`;
+  $("oN").textContent=fmt(n,3)+" mol";
+}
+// ---------- tabel en grafiek ----------
+// kolommen per wet: [kop, functie, decimalen, isVerhouding]
+const thCol=()=>$("tK").checked?["T (K)",r=>r.th+T0,1]:["θ (°C)",r=>r.th,1];
+const TK=r=>r.th+T0;
+const COLS={
+ boyle:()=>[["p (kPa)",r=>r.p,1],["V (mL)",r=>r.V,1],["p · V (J)",r=>r.p*r.V/1000,2,1]],
+ gay:()=>[thCol(),["V (mL)",r=>r.V,1],["V / T (mL/K)",r=>r.V/TK(r),4,1]],
+ reg:()=>[thCol(),["p (kPa)",r=>r.p,1],["p / T (kPa/K)",r=>r.p/TK(r),4,1]],
+ alg:()=>[["p (kPa)",r=>r.p,1],["V (mL)",r=>r.V,1],thCol(),["p · V / T (J/K)",r=>r.p*r.V/1000/TK(r),4,1]],
+ mol:()=>[["gas",r=>r.g,null],["n (mol)",r=>r.n,3],["p (kPa)",r=>r.p,1],["V (mL)",r=>r.V,1],thCol(),["p · V / (n · T) (J·mol⁻¹·K⁻¹)",r=>r.p*r.V/1000/(r.n*TK(r)),3,1]]
+};
+function renderTable(){
+  const cols=COLS[mode]();
+  $("th").innerHTML=`<tr>${cols.map(c=>`<th class="${c[3]?"r":""}">${c[0]}</th>`).join("")}</tr>`;
+  $("tb").innerHTML=rows.length?rows.map(r=>`<tr>${cols.map(c=>`<td class="${c[3]?"r":""}">${c[2]==null?c[1](r):fmt(c[1](r),c[2])}</td>`).join("")}</tr>`).join("")
+    :`<tr class="empty"><td colspan="${cols.length}">Nog geen metingen. Verander de opstelling en klik telkens op ‘Meting noteren’.</td></tr>`;
+  $("tbl").classList.toggle("noratio",!$("tR").checked);
+  renderChart();
+}
+function niceStep(max){const raw=max/5,p=10**Math.floor(Math.log10(raw)),f=raw/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+const decs=s=>Math.max(0,-Math.floor(Math.log10(s)+1e-9))+(String(s).includes("25")?1:0);
+function linfit(P){const k=P.length,sx=P.reduce((a,q)=>a+q[0],0),sy=P.reduce((a,q)=>a+q[1],0),sxx=P.reduce((a,q)=>a+q[0]*q[0],0),sxy=P.reduce((a,q)=>a+q[0]*q[1],0);
+  const d=k*sxx-sx*sx;if(k<2||Math.abs(d)<1e-12)return null;const b=(k*sxy-sx*sy)/d;return {a:(sy-b*sx)/k,b}}
+function chartCfg(){
+  const K=$("tK").checked;
+  if(mode=="boyle")return graphKind==0?{x:"V (mL)",y:"p (kPa)",f:r=>[r.V,r.p],kind:"hyp",x0:0}:{x:"1/V (1/mL)",y:"p (kPa)",f:r=>[1/r.V,r.p],kind:"orig",x0:0};
+  if(mode=="gay")return K?{x:"T (K)",y:"V (mL)",f:r=>[TK(r),r.V],kind:"orig",x0:0}:{x:"θ (°C)",y:"V (mL)",f:r=>[r.th,r.V],kind:"ext",x0:-300};
+  if(mode=="reg")return K?{x:"T (K)",y:"p (kPa)",f:r=>[TK(r),r.p],kind:"orig",x0:0}:{x:"θ (°C)",y:"p (kPa)",f:r=>[r.th,r.p],kind:"ext",x0:-300};
+  if(mode=="alg")return {x:"T (K)",y:"p · V (J)",f:r=>[TK(r),r.p*r.V/1000],kind:"orig",x0:0};
+  return {x:"n · T (mol·K)",y:"p · V (J)",f:r=>[r.n*TK(r),r.p*r.V/1000],kind:"orig",x0:0,slope:"R"};
+}
+function renderChart(){
+  if($("chart").hidden)return;const cs=$("csvg"),c=chartCfg();
+  $("gopts").innerHTML=mode=="boyle"?`<button data-gk="0" aria-pressed="${graphKind==0}">p in functie van V</button><button data-gk="1" aria-pressed="${graphKind==1}">p in functie van 1/V</button>`:"";
+  const L=70,Rr=500,Tp=16,B=270,Wd=Rr-L,Ht=B-Tp;
+  if(rows.length<1){cs.innerHTML=`<text x="260" y="150" text-anchor="middle">Noteer eerst metingen om de grafiek te zien.</text>`;$("gnote").textContent="";return}
+  const P=rows.map(c.f),xmaxD=Math.max(...P.map(q=>q[0])),ymaxD=Math.max(...P.map(q=>q[1]));
+  const xs=niceStep(xmaxD-c.x0),ys=niceStep(ymaxD),xm=c.x0+Math.ceil((xmaxD-c.x0)/xs-1e-9)*xs,ym=Math.ceil(ymaxD/ys-1e-9)*ys;
+  const X=x=>L+(x-c.x0)/(xm-c.x0)*Wd,Y=y=>B-y/ym*Ht;
+  let o="";
+  for(let i=0;c.x0+i*xs<=xm+1e-9;i++){const t=c.x0+i*xs;o+=`<line class="gl" x1="${X(t)}" x2="${X(t)}" y1="${Tp}" y2="${B}"/><text x="${X(t)}" y="${B+18}" text-anchor="middle">${fmt(t,decs(xs))}</text>`}
+  for(let i=0;i*ys<=ym+1e-9;i++){const t=i*ys;o+=`<line class="gl" x1="${L}" x2="${Rr}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-8}" y="${Y(t)+4}" text-anchor="end">${fmt(t,decs(ys))}</text>`}
+  o+=`<line class="ax" x1="${L}" x2="${Rr}" y1="${B}" y2="${B}"/><line class="ax" x1="${X(Math.max(0,c.x0))}" x2="${X(Math.max(0,c.x0))}" y1="${Tp}" y2="${B}"/>`;
+  o+=`<text class="tt" x="${(L+Rr)/2}" y="${B+44}" text-anchor="middle">${c.x}</text><text class="tt" transform="translate(14 ${(Tp+B)/2}) rotate(-90)" text-anchor="middle">${c.y}</text>`;
+  let note="";
+  if(c.kind=="hyp"){const C=P.reduce((a,q)=>a+q[0]*q[1],0)/P.length;let d="";for(let x=Math.max(xs/4,C/ym);x<=xm;x+=(xm)/120)d+=(d?"L":"M")+X(x)+" "+Y(C/x);o+=`<path class="fit" d="${d}"/>`;note="De punten liggen op een hyperbool: p · V is constant.";}
+  else if(c.kind=="orig"){const sxx=P.reduce((a,q)=>a+q[0]*q[0],0),k=P.reduce((a,q)=>a+q[0]*q[1],0)/sxx,xe=Math.min(xm,ym/k);o+=`<line class="fit" x1="${X(0)}" y1="${Y(0)}" x2="${X(xe)}" y2="${Y(k*xe)}"/>`;
+    note=c.slope=="R"?`Rechte door de oorsprong. Helling = ${fmt(k,3)} J·mol⁻¹·K⁻¹ (theoretisch R = 8,314).`:"Rechte door de oorsprong: recht evenredig verband.";}
+  else{const f=rows.length>=2?linfit(P):null;
+    if(f&&f.b>0){const xz=-f.a/f.b,xa=Math.max(c.x0,xz),xb=xm;o+=`<line class="ext" x1="${X(xa)}" y1="${Y(f.a+f.b*xa)}" x2="${X(Math.min(...P.map(q=>q[0])))}" y2="${Y(f.a+f.b*Math.min(...P.map(q=>q[0])))}"/>`;
+      o+=`<line class="fit" x1="${X(Math.min(...P.map(q=>q[0])))}" y1="${Y(f.a+f.b*Math.min(...P.map(q=>q[0])))}" x2="${X(xb)}" y2="${Y(f.a+f.b*xb)}"/>`;
+      if(xz>=c.x0){o+=`<circle cx="${X(xz)}" cy="${Y(0)}" r="5" fill="#e4002b"/><text class="note" x="${X(xz)+8}" y="${Y(0)-10}">θ = ${fmt(xz,0)} °C</text>`}
+      note=`De doorgetrokken rechte snijdt de temperatuuras bij ${fmt(xz,0)} °C: het absolute nulpunt (−273 °C = 0 K).`}
+    else note="Noteer minstens twee metingen bij een verschillende temperatuur.";}
+  o+=P.map(q=>`<circle class="pt" cx="${X(q[0])}" cy="${Y(q[1])}" r="5"/>`).join("");
+  cs.innerHTML=o;$("gnote").textContent=note;
+}
+// ---------- bediening ----------
+function setMode(m){mode=m;const M=MODES[m];
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode==m));
+  $("mtitle").textContent=M.t;$("mconst").textContent=M.c?"constant: "+M.c:"p, V, T en n veranderen";$("hint").textContent=M.hint;$("formula").innerHTML=M.form;
+  // elke wet start vanuit dezelfde begintoestand: 200 mL, 20 °C, 0,008 mol
+  n=N0;$("sN").value=N0;theta=20;$("sT").value=20;V=Vshow=200;pFix=pOf(n,200,T());
+  $("sV").disabled=!M.V;$("sT").disabled=!M.T;
+  $("lV").textContent=M.V?"":m=="gay"?"Het volume verandert vanzelf: de zuiger schuift mee.":"Het volume blijft constant: de zuiger zit vast.";
+  $("lT").textContent=M.T?"":"De temperatuur blijft constant.";
+  $("wrapN").hidden=$("wrapGas").hidden=m!="mol";
+  $("tRl").textContent=m=="mol"?"Kolom p · V / (n · T) tonen":"Kolom met de verhouding tonen";
+  rows=[];reNoise();readout();renderTable()}
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+  if(d.mode){setMode(d.mode);return}
+  if(d.gas!=null){gas=+d.gas;document.querySelectorAll("[data-gas]").forEach(x=>x.setAttribute("aria-pressed",x==b));return}
+  if(d.gk!=null){graphKind=+d.gk;renderChart();return}});
+$("sV").addEventListener("input",e=>{V=Vshow=+e.target.value;reNoise();readout()});
+$("sT").addEventListener("input",e=>{theta=+e.target.value;reNoise();readout()});
+$("sN").addEventListener("input",e=>{n=+e.target.value;reNoise();readout()});
+["tK"].forEach(id=>$(id).addEventListener("change",()=>{readout();renderTable()}));
+$("tE").addEventListener("change",()=>{reNoise();readout()});
+$("tR").addEventListener("change",renderTable);
+$("tF").addEventListener("change",()=>$("formula").hidden=!$("tF").checked);
+$("note").onclick=()=>{const m=meas();rows.push({...m,g:GASES[gas].f});reNoise();readout();renderTable()};
+$("clear").onclick=()=>{rows=[];renderTable()};
+$("graph").onclick=()=>{const show=$("chart").hidden;$("chart").hidden=!show;$("graph").setAttribute("aria-pressed",show);$("graph").textContent=show?"Verberg grafiek":"Toon grafiek";renderChart()};
+// zuiger slepen (als het volume mag veranderen)
+let drag=null;
+const toW=e=>{const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left-view.ox)/view.s,y:(e.clientY-r.top-view.oy)/view.s}};
+cv.addEventListener("pointerdown",e=>{if(!MODES[mode].V)return;const q=toW(e),yp=yPiston(Vshow);
+  if(q.x>CX0-30&&q.x<CX1+30&&q.y>yp-100&&q.y<yp+10){drag={y:q.y,V:V};cv.setPointerCapture(e.pointerId)}});
+cv.addEventListener("pointermove",e=>{const q=toW(e);if(drag){V=Vshow=Math.max(50,Math.min(300,Math.round(drag.V-(q.y-drag.y)/PX)));reNoise();readout();return}
+  const yp=yPiston(Vshow);cv.style.cursor=MODES[mode].V&&q.x>CX0-30&&q.x<CX1+30&&q.y>yp-100&&q.y<yp+10?"ns-resize":"default"});
+["pointerup","pointercancel"].forEach(t=>cv.addEventListener(t,()=>drag=null));
+new ResizeObserver(resize).observe($("stage"));resize();
+setMode("boyle");requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
